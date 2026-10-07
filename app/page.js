@@ -1,51 +1,39 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 export default function Home() {
   const [activePlatform, setActivePlatform] = useState('all');
-  const [campaigns, setCampaigns] = useState([
-    {
-      id: '1',
-      name: 'Google Search - Búsqueda Principal',
-      platform: 'google',
-      status: 'active',
-      spent: 45000,
-      clicks: 340,
-      ctr: 8.09,
-      alert: null,
-    },
-    {
-      id: '2',
-      name: 'Google Display - Remarketing',
-      platform: 'google',
-      status: 'active',
-      spent: 28000,
-      clicks: 12,
-      ctr: 0.07,
-      alert: 'low_ctr',
-    },
-    {
-      id: '3',
-      name: 'Meta Ads - Instagram Feed & Stories',
-      platform: 'meta',
-      status: 'active',
-      spent: 35000,
-      clicks: 8,
-      ctr: 0.89,
-      alert: 'high_cost_low_clicks',
-    },
-    {
-      id: '4',
-      name: 'Meta Ads - Retargeting Carrito',
-      platform: 'meta',
-      status: 'paused',
-      spent: 12000,
-      clicks: 95,
-      ctr: 7.91,
-      alert: null,
+  const [loading, setLoading] = useState(true);
+  const [campaigns, setCampaigns] = useState([]);
+
+  // Cargar campañas reales desde la API
+  useEffect(() => {
+    async function fetchCampaigns() {
+      try {
+        const res = await fetch('/api/campaigns');
+        const data = await res.json();
+
+        if (data.campaigns && data.campaigns.length > 0) {
+          setCampaigns(data.campaigns);
+        } else {
+          // Si no hay campañas reales aún o faltan credenciales, mostrar datos de prueba para la interfaz
+          setCampaigns([
+            { id: '1', name: 'Google Search - Búsqueda Principal', platform: 'google', status: 'active', spent: 45000, clicks: 340, ctr: 8.09, alert: null },
+            { id: '2', name: 'Google Display - Remarketing', platform: 'google', status: 'active', spent: 28000, clicks: 12, ctr: 0.07, alert: 'low_ctr' },
+            { id: '3', name: 'Meta Ads - Instagram Feed & Stories', platform: 'meta', status: 'active', spent: 35000, clicks: 8, ctr: 0.89, alert: 'high_cost_low_clicks' },
+            { id: '4', name: 'Meta Ads - Retargeting Carrito', platform: 'meta', status: 'paused', spent: 12000, clicks: 95, ctr: 7.91, alert: null }
+          ]);
+        }
+      } catch (err) {
+        console.error('Error cargando campañas:', err);
+      } finally {
+        setLoading(false);
+      }
     }
-  ]);
+
+    fetchCampaigns();
+  }, []);
 
   const toggleCampaignStatus = (id) => {
     setCampaigns(prev => prev.map(c => {
@@ -137,64 +125,67 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Lista de Campañas con Selección Individual */}
-      <div className="space-y-3">
-        {filteredCampaigns.map((c) => {
-          const isPaused = c.status === 'paused';
+      {/* Lista de Campañas */}
+      {loading ? (
+        <div className="text-center py-8 text-xs text-slate-400">Cargando campañas...</div>
+      ) : (
+        <div className="space-y-3">
+          {filteredCampaigns.map((c) => {
+            const isPaused = c.status === 'paused';
 
-          return (
-            <div 
-              key={c.id}
-              className={`p-4 rounded-xl border transition-all ${
-                isPaused 
-                  ? 'bg-slate-900/40 border-slate-800/60 opacity-60' 
-                  : c.alert 
-                  ? 'bg-slate-900 border-amber-500/40' 
-                  : 'bg-slate-900 border-slate-800'
-              }`}
-            >
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${
-                      c.platform === 'google' 
-                        ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' 
-                        : 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
-                    }`}>
-                      {c.platform === 'google' ? 'Google' : 'Meta'}
-                    </span>
-                    <h3 className="text-sm font-semibold text-slate-100">{c.name}</h3>
+            return (
+              <div 
+                key={c.id}
+                className={`p-4 rounded-xl border transition-all ${
+                  isPaused 
+                    ? 'bg-slate-900/40 border-slate-800/60 opacity-60' 
+                    : c.alert 
+                    ? 'bg-slate-900 border-amber-500/40' 
+                    : 'bg-slate-900 border-slate-800'
+                }`}
+              >
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] px-2 py-0.5 rounded font-medium ${
+                        c.platform === 'google' 
+                          ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' 
+                          : 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
+                      }`}>
+                        {c.platform === 'google' ? 'Google' : 'Meta'}
+                      </span>
+                      <h3 className="text-sm font-semibold text-slate-100">{c.name}</h3>
+                    </div>
+
+                    <button
+                      onClick={() => toggleCampaignStatus(c.id)}
+                      className={`px-3 py-1 rounded-lg text-xs font-medium border transition-all ${
+                        !isPaused 
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20' 
+                          : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
+                      }`}
+                    >
+                      {!isPaused ? 'Pausar' : 'Activar'}
+                    </button>
                   </div>
 
-                  <button
-                    onClick={() => toggleCampaignStatus(c.id)}
-                    className={`px-3 py-1 rounded-lg text-xs font-medium border transition-all ${
-                      !isPaused 
-                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20' 
-                        : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
-                    }`}
-                  >
-                    {!isPaused ? 'Pausar' : 'Activar'}
-                  </button>
-                </div>
+                  {c.alert && !isPaused && (
+                    <div className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1.5 rounded-lg">
+                      ⚠️ {c.alert === 'low_ctr' ? 'Alerta: CTR muy bajo (< 1%). Pocos clics para las impresiones.' : 'Alerta: Alto gasto con muy pocos clics.'}
+                    </div>
+                  )}
 
-                {/* Alerta si la campaña está fallando */}
-                {c.alert && !isPaused && (
-                  <div className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1.5 rounded-lg">
-                    ⚠️ {c.alert === 'low_ctr' ? 'Alerta: CTR muy bajo (< 1%). Pocos clics para las impresiones.' : 'Alerta: Alto gasto con muy pocos clics.'}
+                  <div className="flex justify-between items-center text-xs border-t border-slate-800/60 pt-2 text-slate-400">
+                    <div>Gasto: <strong className="text-slate-200">${c.spent.toLocaleString('es-CL')}</strong></div>
+                    <div>Clics: <strong className="text-slate-200">{c.clicks}</strong></div>
+                    <div>CTR: <strong className="text-slate-200">{c.ctr}%</strong></div>
                   </div>
-                )}
-
-                <div className="flex justify-between items-center text-xs border-t border-slate-800/60 pt-2 text-slate-400">
-                  <div>Gasto: <strong className="text-slate-200">${c.spent.toLocaleString('es-CL')}</strong></div>
-                  <div>Clics: <strong className="text-slate-200">{c.clicks}</strong></div>
-                  <div>CTR: <strong className="text-slate-200">{c.ctr}%</strong></div>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </main>
   );
 }
