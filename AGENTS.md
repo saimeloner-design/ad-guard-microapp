@@ -1,5 +1,7 @@
 Responde siempre en español
 
+Después de hacer un commit, haz siempre `git push`.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know
