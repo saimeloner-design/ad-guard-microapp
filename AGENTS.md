@@ -1,3 +1,5 @@
+Responde siempre en español
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know
