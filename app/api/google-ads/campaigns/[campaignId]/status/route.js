@@ -1,8 +1,10 @@
 import { cleanCustomerId, cleanOptionalCustomerId, errorResponse, GoogleAdsError, getAccessToken, setCampaignStatus } from '@/lib/google-ads';
+import { flushLogsAfterResponse } from '@/lib/log';
 
 const ALLOWED_STATUS = new Set(['PAUSED', 'ENABLED']);
 
 export async function POST(request, ctx) {
+  flushLogsAfterResponse();
   try {
     const { campaignId } = await ctx.params;
     const body = await request.json().catch(() => ({}));

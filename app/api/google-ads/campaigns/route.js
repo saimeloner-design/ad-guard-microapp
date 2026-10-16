@@ -1,7 +1,9 @@
 import { evaluateAccount } from '@/lib/alerts';
 import { cleanCustomerId, cleanOptionalCustomerId, errorResponse, getAccessToken, getCampaigns } from '@/lib/google-ads';
+import { flushLogsAfterResponse } from '@/lib/log';
 
 export async function GET(request) {
+  flushLogsAfterResponse();
   try {
     const params = request.nextUrl.searchParams;
     const customerId = cleanCustomerId(params.get('customerId'));
