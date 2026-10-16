@@ -1,0 +1,110 @@
+# AdGuard Micro — Especificación
+
+## 0. Prompt original (referencia)
+
+> quiero transofmar este mockup en realidad. necesito que me ayudes a conectar a los datos reales incialmente de google ads de manera que sea simple para el cliente, pensando que los clientes son usuarios basicos, emprendedores que hacen sus anuncios y no tienen a una persona especializada en ads. El objetivo incial es ahorrarles dinero entregando alertas para que detenga los anuncios que no estan rindiendo segun una serie de critieros que definiremos y que algunos de ellos ya estan definidos pero se pueden mejorar. quiero que este promp quede como referncia en un archivo de especificacion
+
+(Fecha: 2026-10-07. Se conserva el texto tal cual fue escrito.)
+
+## 1. Objetivo
+
+Ayudar a emprendedores que gestionan sus propios anuncios —sin especialista en ads— a **dejar de gastar dinero en campañas que no rinden**. La app se conecta a su cuenta de Google Ads, revisa las campañas con criterios claros y les dice, en lenguaje simple, qué pausar y por qué. Pausar se hace con un botón, sin entrar a Google Ads.
+
+### Usuario objetivo
+- Dueño(a) de un negocio pequeño que creó sus campañas solo(a).
+- No conoce términos como CTR, CPA o "conversión", o los conoce a medias.
+- Entra desde el celular, poco tiempo, quiere una respuesta: "¿estoy perdiendo plata?".
+
+### Principios de producto
+1. **Cero configuración técnica para el cliente**: iniciar sesión con Google y listo. Nada de IDs de cliente, tokens ni "developer token".
+2. **Lenguaje humano**: cada alerta dice qué pasa, cuánto dinero está en juego y qué hacer. Los términos técnicos van como dato secundario.
+3. **Prudencia**: no alertar con pocos datos (campañas nuevas o con poco tráfico). Una alerta falsa que haga pausar una campaña buena es peor que no alertar.
+4. **El usuario decide**: la app recomienda; pausar siempre requiere confirmación.
+
+## 2. Alcance
+
+### Fase 1 (esta entrega) — Google Ads
+- Inicio de sesión con Google (OAuth) pidiendo permiso de Google Ads.
+- Detección automática de las cuentas de Google Ads del usuario; si hay una sola, se usa directamente; si hay varias, selector simple.
+- Lectura de campañas activas y pausadas con métricas de los **últimos 30 días**.
+- Motor de alertas (sección 4) con mensajes en español simple.
+- Pausar / reactivar campaña desde la app (con confirmación).
+- Modo demo con datos de ejemplo, para mostrar la app sin cuenta conectada.
+
+### Fuera de alcance por ahora
+- Meta Ads (fase 2; la UI vuelve a tener pestañas por canal cuando exista).
+- Alertas por email/WhatsApp y revisión automática programada (requiere base de datos).
+- Cuentas administradas vía MCC (agencias). La fase 1 apunta a cuentas propias.
+- Análisis por anuncio o palabra clave (fase 1 trabaja a nivel campaña).
+
+## 3. Arquitectura
+
+```
+Navegador ──► NextAuth (Google OAuth, scope adwords)
+                 │  refresh_token guardado en el JWT cifrado (cookie httpOnly)
+                 ▼
+         Route handlers (/api/google-ads/*)  ──►  Google Ads API REST (v25)
+                 │
+                 ▼
+          lib/alerts.js  (reglas puras, sin red → testeables)
+```
+
+- **Sin base de datos** en fase 1: el refresh token vive en la cookie de sesión cifrada de NextAuth y nunca se expone al navegador.
+- `lib/google-ads.js`: cliente REST mínimo (listar cuentas, consultar campañas con GAQL, cambiar estado).
+- `lib/alerts.js`: recibe métricas crudas y devuelve alertas. Umbrales en `ALERT_CONFIG`.
+- Versión de API configurable con `GOOGLE_ADS_API_VERSION` (por defecto `v25`, vigente hasta ~ago 2027). Google publica versiones mayores cada ~3 meses; revisar la fecha de baja periódicamente: https://developers.google.com/google-ads/api/docs/sunset-dates
+
+### Endpoints
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/api/google-ads/accounts` | Cuentas accesibles (id, nombre, moneda). Excluye cuentas administradoras. |
+| GET | `/api/google-ads/campaigns?customerId=` | Campañas + métricas 30 días + alertas + resumen de cuenta. |
+| POST | `/api/google-ads/campaigns/[campaignId]/status` | Body `{ customerId, status: "PAUSED" \| "ENABLED" }`. |
+
+## 4. Criterios de alerta
+
+Ventana: últimos 30 días. Todas las reglas sólo aplican a campañas **activas**.
+
+### Requisito de datos mínimos
+Una campaña sólo se evalúa si tiene **≥ 1.000 impresiones o ≥ 30 clics** en la ventana. Si no, se marca "Aprendiendo — aún sin datos suficientes".
+
+### Reglas
+
+| # | Regla | Condición | Severidad | Mensaje al usuario (resumen) |
+|---|---|---|---|---|
+| R1 | Gasto sin resultados | La cuenta mide conversiones, la campaña tiene 0 conversiones y gastó ≥ 2× el costo promedio por conversión de la cuenta **o** tiene ≥ 50 clics | **Pausar** | "Gastaste $X y no conseguiste ninguna venta/contacto." |
+| R2 | Resultados muy caros | Conversiones > 0 y costo por conversión ≥ 2,5× el promedio de la cuenta (requiere ≥ 2 campañas con conversiones) | Revisar | "Cada resultado te cuesta $X, más del doble que en tus otras campañas." |
+| R3 | Pocas personas hacen clic | CTR bajo el mínimo según tipo: Búsqueda < 1%, Shopping < 0,5%, Display/Video/otras < 0,1% | Revisar | "Tu anuncio se muestra mucho pero casi nadie hace clic." |
+| R4 | Clics muy caros | CPC promedio ≥ 3× el CPC promedio de la cuenta (requiere ≥ 2 campañas con clics) | Revisar | "Cada clic te cuesta $X, el triple que en tus otras campañas." |
+
+Alerta a nivel cuenta:
+- **A1 Sin medición**: la cuenta gastó en 30 días y no registra ninguna conversión → "No estamos viendo ventas ni contactos. Puede que no tengas configurada la medición." En ese caso R1 y R2 no se evalúan (no se puede juzgar resultados sin medirlos).
+
+### Cambios respecto al mockup
+| Antes | Ahora | Motivo |
+|---|---|---|
+| `impressions > 1000 && ctr < 1%` para toda campaña | CTR mínimo por tipo de campaña | En Display un CTR de 0,3% es normal; con la regla anterior casi todas las campañas Display alertaban. |
+| `gasto > 20.000 && clics < 5` | R4 relativa al promedio de la cuenta | Monto fijo sólo sirve en CLP y para un tamaño de cuenta. Relativo funciona en cualquier moneda y presupuesto. |
+| — | R1 "gasto sin resultados" | Es la regla que más dinero ahorra: pagar clics que nunca convierten. |
+| — | Datos mínimos | Evita alertar campañas recién creadas. |
+
+### Pendiente por definir con el cliente
+- ¿Usar ventana de 30 días o 14? (30 da más datos, 14 reacciona más rápido).
+- Valores exactos de los multiplicadores (2×, 2,5×, 3×) tras ver cuentas reales.
+- Mostrar "dinero que podrías ahorrar" = gasto mensual de campañas con alerta Pausar.
+
+## 5. Requisitos para producción (no son del cliente, son del operador de la app)
+
+1. **Proyecto en Google Cloud** con OAuth Client (tipo "Aplicación web"), redirect URI `https://<dominio>/api/auth/callback/google` (y `http://localhost:3000/api/auth/callback/google` en desarrollo).
+2. **Google Ads API habilitada** en ese proyecto.
+3. **Developer token** (se obtiene en una cuenta administradora MCC → Centro de API). Con nivel *Test* sólo funciona con cuentas de prueba; para clientes reales se necesita **Basic access** (solicitud a Google, días a semanas).
+4. **Verificación de la app OAuth**: el scope `adwords` es sensible. Mientras no esté verificada, sólo funcionan usuarios agregados como "test users" (máx. 100) y verán un aviso de "app no verificada".
+5. Variables de entorno: ver `.env.example`.
+
+## 6. Experiencia de usuario
+
+1. Pantalla inicial: qué hace la app en una frase + botón "Conectar con Google Ads" + link "Ver demo".
+2. Tras conectar: si hay varias cuentas, elegir una (se recuerda en el navegador).
+3. Panel: resumen (gasto 30 días, resultados, alertas, "podrías ahorrar"), luego campañas ordenadas por severidad de alerta.
+4. Cada alerta: título simple, explicación de una línea, botón "Pausar" con confirmación que repite el monto en juego.
+5. Errores traducidos: token no aprobado, cuenta sin permisos, sesión expirada → mensaje claro y qué hacer.
