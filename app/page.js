@@ -197,13 +197,15 @@ function LiveView({ account, onChangeAccount }) {
 function ConnectedView() {
   const [accounts, setAccounts] = useState(null);
   const [managers, setManagers] = useState([]);
+  const [notice, setNotice] = useState(null);
   const [customerId, setCustomerId] = useState(null);
   const [error, setError] = useState(null);
 
   const load = useCallback(() => {
-    fetchJson('/api/google-ads/accounts').then(({ accounts, managers }) => {
+    fetchJson('/api/google-ads/accounts').then(({ accounts, managers, notice }) => {
       setAccounts(accounts);
       setManagers(managers);
+      setNotice(notice);
       const stored = readStoredAccount();
       if (accounts.some((a) => a.id === stored)) setCustomerId(stored);
       else if (accounts.length === 1) setCustomerId(accounts[0].id);
@@ -228,9 +230,10 @@ function ConnectedView() {
     return (
       <>
         <Message>
-          {managers.length > 0
-            ? 'Tu usuario sólo tiene acceso a una cuenta de administrador, sin cuentas con anuncios debajo.'
-            : 'No encontramos cuentas de Google Ads asociadas a este usuario de Google. ¿Entraste con el correo correcto?'}
+          {notice ||
+            (managers.length > 0
+              ? 'Tu usuario sólo tiene acceso a una cuenta de administrador, sin cuentas con anuncios debajo.'
+              : 'No encontramos cuentas de Google Ads asociadas a este usuario de Google. ¿Entraste con el correo correcto?')}
         </Message>
         <ManagerNote managers={managers} />
       </>
