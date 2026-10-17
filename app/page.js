@@ -182,18 +182,8 @@ function Landing({ onDemo, notice }) {
 /** Por ahora sólo hay panel para Google Ads; la sesión de Meta ya queda lista para cuando exista. */
 function MetaConnectedView() {
   return (
-    <StateCard
-      tone="brand"
-      icon={MetaLogo}
-      title="Tu cuenta de Meta quedó conectada"
-      action={
-        <Button variant="secondary" icon={GoogleLogo} onClick={connectGoogle}>
-          Revisar Google Ads
-        </Button>
-      }
-    >
-      Estamos terminando la revisión de campañas de Facebook e Instagram; pronto aparecerán aquí. Si también anuncias en Google,
-      puedes revisar esas campañas ahora.
+    <StateCard tone="brand" icon={MetaLogo} title="Tu cuenta de Meta quedó conectada">
+      Estamos terminando la revisión de campañas de Facebook e Instagram; pronto aparecerán aquí.
     </StateCard>
   );
 }
