@@ -14,6 +14,18 @@ const CHANNEL_LABELS = {
   DEMAND_GEN: 'Demand Gen',
   SMART: 'Inteligente',
   LOCAL: 'Local',
+  // Objetivos de campaña de Meta
+  OUTCOME_SALES: 'Ventas',
+  OUTCOME_LEADS: 'Clientes potenciales',
+  OUTCOME_ENGAGEMENT: 'Interacción',
+  OUTCOME_TRAFFIC: 'Tráfico',
+  OUTCOME_AWARENESS: 'Reconocimiento',
+  OUTCOME_APP_PROMOTION: 'Promoción de app',
+};
+
+const PLATFORMS = {
+  google: { label: 'Google', ads: 'Google Ads' },
+  meta: { label: 'Meta', ads: 'el Administrador de anuncios de Meta' },
 };
 
 const STAT_TONES = {
@@ -68,7 +80,7 @@ function Metric({ label, value }) {
   );
 }
 
-function CampaignCard({ campaign: c, currency, onToggle, busy }) {
+function CampaignCard({ campaign: c, currency, platform, onToggle, busy }) {
   const isPaused = c.status === 'paused';
   const shouldPause = c.alerts.some((a) => a.severity === SEVERITY.PAUSE);
   const money = (v) => formatMoney(v, currency);
@@ -91,7 +103,7 @@ function CampaignCard({ campaign: c, currency, onToggle, busy }) {
             <div className="flex flex-wrap items-center gap-1.5">
               <StatusPill paused={isPaused} />
               <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
-                {CHANNEL_LABELS[c.channel] || 'Google'}
+                {CHANNEL_LABELS[c.channel] || PLATFORMS[platform].label}
               </span>
             </div>
             <h3 className={`text-[15px] font-semibold mt-2 break-words ${isPaused ? 'text-muted' : 'text-fg'}`}>{c.name}</h3>
@@ -180,9 +192,9 @@ function ConfirmDialog({ campaign, currency, onConfirm, onCancel }) {
 
 /**
  * Panel con resumen, alertas de cuenta y campañas.
- * `onSetStatus(campaign, 'PAUSED' | 'ENABLED')` debe devolver una promesa.
+ * `onSetStatus(campaign, 'PAUSED' | 'ENABLED')` debe devolver una promesa. `platform`: 'google' | 'meta'.
  */
-export function Dashboard({ account, evaluation, onSetStatus, onChangeAccount }) {
+export function Dashboard({ account, evaluation, onSetStatus, onChangeAccount, platform = 'google' }) {
   const [pending, setPending] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [toast, setToast] = useState(null);
@@ -220,7 +232,7 @@ export function Dashboard({ account, evaluation, onSetStatus, onChangeAccount })
           )
         }
       >
-        Cuando crees una campaña en Google Ads aparecerá aquí y empezaremos a vigilar su gasto.
+        Cuando crees una campaña en {PLATFORMS[platform].ads} aparecerá aquí y empezaremos a vigilar su gasto.
         {onChangeAccount && ' Si tus anuncios están en otra de tus cuentas, cámbiate a ella.'}
       </StateCard>
     );
@@ -263,7 +275,7 @@ export function Dashboard({ account, evaluation, onSetStatus, onChangeAccount })
       <h2 className="text-sm font-semibold text-fg mb-3">Campañas</h2>
       <div className="space-y-3">
         {campaigns.map((c) => (
-          <CampaignCard key={c.id} campaign={c} currency={account.currency} onToggle={setPending} busy={busyId === c.id} />
+          <CampaignCard key={c.id} campaign={c} currency={account.currency} platform={platform} onToggle={setPending} busy={busyId === c.id} />
         ))}
       </div>
 

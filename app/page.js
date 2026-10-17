@@ -11,20 +11,18 @@ import { GoogleLogo, MetaLogo } from './components/brand-icons';
 import { ThemeToggle } from './components/theme';
 import { Alert, Button, LoadingState, StateCard } from './components/ui';
 
-const ACCOUNT_KEY = 'adguard.customerId';
-
-function readStoredAccount() {
+function readStoredAccount(key) {
   try {
-    return localStorage.getItem(ACCOUNT_KEY);
+    return localStorage.getItem(key);
   } catch {
     return null;
   }
 }
 
-function storeAccount(id) {
+function storeAccount(key, id) {
   try {
-    if (id) localStorage.setItem(ACCOUNT_KEY, id);
-    else localStorage.removeItem(ACCOUNT_KEY);
+    if (id) localStorage.setItem(key, id);
+    else localStorage.removeItem(key);
   } catch {}
 }
 
@@ -40,6 +38,36 @@ async function fetchJson(url, options) {
 }
 
 const connectGoogle = () => signIn('google');
+
+// Lo que cambia entre Google Ads y Meta Ads; el resto del flujo (cuentas → panel) es el mismo.
+const SOURCES = {
+  google: {
+    id: 'google',
+    provider: 'google',
+    label: 'Google',
+    Logo: GoogleLogo,
+    api: '/api/google-ads',
+    storageKey: 'adguard.customerId',
+    params: (a) => ({ customerId: a.id, ...(a.loginCustomerId && { loginCustomerId: a.loginCustomerId }) }),
+    formatId: (id) => id.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3'),
+    searching: 'Buscando tus cuentas de Google Ads…',
+    accountsLabel: 'cuentas de Google Ads con anuncios',
+    noAccounts: 'No encontramos cuentas de Google Ads asociadas a este usuario de Google. ¿Entraste con el correo correcto?',
+  },
+  meta: {
+    id: 'meta',
+    provider: 'facebook',
+    label: 'Meta',
+    Logo: MetaLogo,
+    api: '/api/meta-ads',
+    storageKey: 'adguard.metaAccountId',
+    params: (a) => ({ accountId: a.id }),
+    formatId: (id) => `ID ${id}`,
+    searching: 'Buscando tus cuentas publicitarias de Meta…',
+    accountsLabel: 'cuentas publicitarias de Meta',
+    noAccounts: 'No encontramos cuentas publicitarias asociadas a este usuario de Facebook. ¿Entraste con el perfil correcto?',
+  },
+};
 
 const PROVIDERS = [
   { id: 'google', label: 'Continuar con Google', Logo: GoogleLogo },
@@ -105,16 +133,16 @@ function Header({ subtitle, right }) {
   );
 }
 
-function ErrorState({ error, onRetry }) {
+function ErrorState({ source, error, onRetry }) {
   const reauth = error.code === 'REAUTH';
   return (
     <StateCard
       tone={reauth ? 'warning' : 'danger'}
       icon={reauth ? RefreshCw : TriangleAlert}
-      title={reauth ? 'Necesitamos que vuelvas a conectar Google' : 'No pudimos cargar tus datos'}
+      title={reauth ? `Necesitamos que vuelvas a conectar ${source.label}` : 'No pudimos cargar tus datos'}
       action={
         reauth ? (
-          <Button variant="secondary" icon={GoogleLogo} onClick={connectGoogle}>
+          <Button variant="secondary" icon={source.Logo} onClick={() => signIn(source.provider)}>
             Volver a conectar
           </Button>
         ) : (
@@ -179,15 +207,6 @@ function Landing({ onDemo, notice }) {
   );
 }
 
-/** Por ahora sólo hay panel para Google Ads; la sesión de Meta ya queda lista para cuando exista. */
-function MetaConnectedView() {
-  return (
-    <StateCard tone="brand" icon={MetaLogo} title="Tu cuenta de Meta quedó conectada">
-      Estamos terminando la revisión de campañas de Facebook e Instagram; pronto aparecerán aquí.
-    </StateCard>
-  );
-}
-
 function DemoView() {
   const [campaigns, setCampaigns] = useState(DEMO_CAMPAIGNS);
   const evaluation = useMemo(() => evaluateAccount(campaigns, { currency: DEMO_ACCOUNT.currency }), [campaigns]);
@@ -227,13 +246,11 @@ function ManagerNote({ managers }) {
   );
 }
 
-const formatCustomerId = (id) => id.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
-
-function AccountPicker({ accounts, managers, onSelect }) {
+function AccountPicker({ source, accounts, managers, onSelect }) {
   return (
     <div className="motion-safe:animate-fade-in">
       <h2 className="text-xl font-semibold tracking-tight text-fg">¿Qué cuenta quieres revisar?</h2>
-      <p className="text-sm text-muted mt-1 mb-5">Tienes acceso a {accounts.length} cuentas de Google Ads con anuncios.</p>
+      <p className="text-sm text-muted mt-1 mb-5">Tienes acceso a {accounts.length} {source.accountsLabel}.</p>
       <div className="space-y-2.5">
         {accounts.map((a) => (
           <button
@@ -247,7 +264,7 @@ function AccountPicker({ accounts, managers, onSelect }) {
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-semibold text-fg truncate">{a.name}</span>
               <span className="block text-xs text-muted mt-0.5">
-                {formatCustomerId(a.id)} · {a.currency}
+                {source.formatId(a.id)} · {a.currency}
                 {a.testAccount && ' · cuenta de prueba'}
               </span>
             </span>
@@ -260,17 +277,15 @@ function AccountPicker({ accounts, managers, onSelect }) {
   );
 }
 
-function LiveView({ account, onChangeAccount }) {
-  const customerId = account.id;
-  const loginCustomerId = account.loginCustomerId;
+function LiveView({ source, account, onChangeAccount }) {
+  const params = source.params(account);
+  const query = new URLSearchParams(params).toString();
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
 
   const load = useCallback(() => {
-    const params = new URLSearchParams({ customerId });
-    if (loginCustomerId) params.set('loginCustomerId', loginCustomerId);
-    fetchJson(`/api/google-ads/campaigns?${params}`).then(setData, setError);
-  }, [customerId, loginCustomerId]);
+    fetchJson(`${source.api}/campaigns?${query}`).then(setData, setError);
+  }, [source, query]);
 
   useEffect(load, [load]);
 
@@ -282,13 +297,16 @@ function LiveView({ account, onChangeAccount }) {
 
   const campaigns = data?.campaigns;
   const currency = data?.account.currency;
-  const evaluation = useMemo(() => campaigns && evaluateAccount(campaigns, { currency }), [campaigns, currency]);
+  const evaluation = useMemo(
+    () => campaigns && evaluateAccount(campaigns, { currency, platform: source.label }),
+    [campaigns, currency, source]
+  );
 
   const onSetStatus = async (campaign, status) => {
-    const res = await fetchJson(`/api/google-ads/campaigns/${campaign.id}/status`, {
+    const res = await fetchJson(`${source.api}/campaigns/${campaign.id}/status`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ customerId, loginCustomerId, status }),
+      body: JSON.stringify({ ...params, status }),
     });
     setData((prev) => ({
       ...prev,
@@ -296,12 +314,20 @@ function LiveView({ account, onChangeAccount }) {
     }));
   };
 
-  if (error) return <ErrorState error={error} onRetry={retry} />;
+  if (error) return <ErrorState source={source} error={error} onRetry={retry} />;
   if (!evaluation) return <LoadingState>Revisando tus campañas…</LoadingState>;
-  return <Dashboard account={data.account} evaluation={evaluation} onSetStatus={onSetStatus} onChangeAccount={onChangeAccount} />;
+  return (
+    <Dashboard
+      account={data.account}
+      evaluation={evaluation}
+      onSetStatus={onSetStatus}
+      onChangeAccount={onChangeAccount}
+      platform={source.id}
+    />
+  );
 }
 
-function ConnectedView() {
+function ConnectedView({ source }) {
   const [accounts, setAccounts] = useState(null);
   const [managers, setManagers] = useState([]);
   const [notice, setNotice] = useState(null);
@@ -309,20 +335,20 @@ function ConnectedView() {
   const [error, setError] = useState(null);
 
   const load = useCallback(() => {
-    fetchJson('/api/google-ads/accounts').then(({ accounts, managers, notice }) => {
+    fetchJson(`${source.api}/accounts`).then(({ accounts, managers = [], notice }) => {
       setAccounts(accounts);
       setManagers(managers);
       setNotice(notice);
-      const stored = readStoredAccount();
+      const stored = readStoredAccount(source.storageKey);
       if (accounts.some((a) => a.id === stored)) setCustomerId(stored);
       else if (accounts.length === 1) setCustomerId(accounts[0].id);
     }, setError);
-  }, []);
+  }, [source]);
 
   useEffect(load, [load]);
 
   const select = (id) => {
-    storeAccount(id);
+    storeAccount(source.storageKey, id);
     setCustomerId(id);
   };
 
@@ -331,8 +357,8 @@ function ConnectedView() {
     load();
   };
 
-  if (error) return <ErrorState error={error} onRetry={retry} />;
-  if (!accounts) return <LoadingState>Buscando tus cuentas de Google Ads…</LoadingState>;
+  if (error) return <ErrorState source={source} error={error} onRetry={retry} />;
+  if (!accounts) return <LoadingState>{source.searching}</LoadingState>;
   if (accounts.length === 0) {
     return (
       <>
@@ -340,13 +366,13 @@ function ConnectedView() {
           {notice ||
             (managers.length > 0
               ? 'Tu usuario sólo tiene acceso a una cuenta de administrador, sin cuentas con anuncios debajo.'
-              : 'No encontramos cuentas de Google Ads asociadas a este usuario de Google. ¿Entraste con el correo correcto?')}
+              : source.noAccounts)}
         </StateCard>
         <ManagerNote managers={managers} />
       </>
     );
   }
-  if (!customerId) return <AccountPicker accounts={accounts} managers={managers} onSelect={select} />;
+  if (!customerId) return <AccountPicker source={source} accounts={accounts} managers={managers} onSelect={select} />;
 
   const account = accounts.find((a) => a.id === customerId);
   return (
@@ -357,7 +383,7 @@ function ConnectedView() {
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-fg truncate">{account.name}</p>
-          <p className="text-xs text-muted">{formatCustomerId(account.id)}</p>
+          <p className="text-xs text-muted">{source.formatId(account.id)}</p>
         </div>
         {accounts.length > 1 && (
           <Button size="sm" variant="ghost" onClick={() => select(null)} className="shrink-0">
@@ -365,7 +391,7 @@ function ConnectedView() {
           </Button>
         )}
       </div>
-      <LiveView key={customerId} account={account} onChangeAccount={accounts.length > 1 ? () => select(null) : null} />
+      <LiveView key={customerId} source={source} account={account} onChangeAccount={accounts.length > 1 ? () => select(null) : null} />
     </>
   );
 }
@@ -421,9 +447,9 @@ function Home() {
       {status === 'loading' ? (
         <LoadingState>Cargando…</LoadingState>
       ) : google ? (
-        <ConnectedView />
+        <ConnectedView key="google" source={SOURCES.google} />
       ) : meta ? (
-        <MetaConnectedView />
+        <ConnectedView key="meta" source={SOURCES.meta} />
       ) : demo ? (
         <DemoView />
       ) : (

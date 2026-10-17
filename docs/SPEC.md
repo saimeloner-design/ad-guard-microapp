@@ -60,6 +60,9 @@ Navegador ──► NextAuth (Google OAuth, scope adwords)
 | GET | `/api/google-ads/accounts` | Cuentas accesibles (id, nombre, moneda). Excluye cuentas administradoras. |
 | GET | `/api/google-ads/campaigns?customerId=` | Campañas + métricas 30 días + alertas + resumen de cuenta. |
 | POST | `/api/google-ads/campaigns/[campaignId]/status` | Body `{ customerId, status: "PAUSED" \| "ENABLED" }`. |
+| GET | `/api/meta-ads/accounts` | Cuentas publicitarias de Meta (excluye desactivadas y cerradas). |
+| GET | `/api/meta-ads/campaigns?accountId=` | Igual que en Google, con métricas de Meta (ver `plan.md`). |
+| POST | `/api/meta-ads/campaigns/[campaignId]/status` | Body `{ status: "PAUSED" \| "ENABLED" }`. |
 
 ## 4. Criterios de alerta
 
