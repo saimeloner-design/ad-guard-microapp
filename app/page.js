@@ -46,10 +46,13 @@ const PROVIDERS = [
   { id: 'facebook', label: 'Continuar con Meta', Logo: MetaLogo },
 ];
 
+const CANCELLED = 'La conexión no se completó. Si cancelaste o desmarcaste algún permiso, vuelve a intentarlo y acéptalos todos.';
+
 // Códigos con los que next-auth vuelve a la página (pages.error en lib/auth.js).
 const LOGIN_ERRORS = {
   OAuthSignin: 'No pudimos abrir la ventana de inicio de sesión. Intenta de nuevo en un momento.',
-  OAuthCallback: 'La conexión no se completó. Si cancelaste o desmarcaste algún permiso, vuelve a intentarlo y acéptalos todos.',
+  OAuthCallback: CANCELLED,
+  Callback: CANCELLED, // p. ej. el usuario canceló en el diálogo de Meta
   AccessDenied: 'No se concedió el acceso. Vuelve a intentarlo y acepta los permisos para que podamos revisar tus anuncios.',
   Configuration: 'Hay un problema de configuración de nuestro lado. Ya nos llegó el aviso; intenta más tarde.',
 };
