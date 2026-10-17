@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { formatMoney, SEVERITY } from '@/lib/alerts';
+import { Alert, Button, Icon, StateCard, Toast } from './ui';
 
 const CHANNEL_LABELS = {
   SEARCH: 'Búsqueda',
@@ -14,12 +15,23 @@ const CHANNEL_LABELS = {
   LOCAL: 'Local',
 };
 
-function StatCard({ label, value, tone = 'default' }) {
-  const toneClass = { default: 'text-slate-100', warn: 'text-amber-400', good: 'text-emerald-400' }[tone];
+const STAT_TONES = {
+  default: { value: 'text-slate-900', icon: 'bg-slate-100 text-slate-500' },
+  warn: { value: 'text-amber-600', icon: 'bg-amber-50 text-amber-600' },
+  good: { value: 'text-emerald-600', icon: 'bg-emerald-50 text-emerald-600' },
+};
+
+function StatCard({ label, value, icon, tone = 'default' }) {
+  const t = STAT_TONES[tone];
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-xl p-3.5">
-      <span className="text-xs text-slate-400">{label}</span>
-      <div className={`text-lg font-bold mt-0.5 ${toneClass}`}>{value}</div>
+    <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs">
+      <div className="flex items-center gap-2">
+        <span className={`size-7 grid place-items-center rounded-lg ${t.icon}`}>
+          <Icon name={icon} className="size-4" />
+        </span>
+        <span className="text-xs font-medium text-slate-500 leading-tight">{label}</span>
+      </div>
+      <div className={`text-xl font-semibold mt-2.5 tabular-nums tracking-tight ${t.value}`}>{value}</div>
     </div>
   );
 }
@@ -27,16 +39,30 @@ function StatCard({ label, value, tone = 'default' }) {
 function AlertBox({ alert }) {
   const isPause = alert.severity === SEVERITY.PAUSE;
   return (
-    <div
-      className={`text-xs px-2.5 py-2 rounded-lg border ${
-        isPause ? 'text-red-300 bg-red-500/10 border-red-500/25' : 'text-amber-300 bg-amber-500/10 border-amber-500/20'
+    <Alert tone={isPause ? 'danger' : 'warning'} title={alert.title}>
+      {alert.message}
+    </Alert>
+  );
+}
+
+function StatusPill({ paused }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded-full ${
+        paused ? 'bg-slate-100 text-slate-500' : 'bg-emerald-50 text-emerald-700'
       }`}
     >
-      <div className="font-semibold">
-        {isPause ? '⛔ Te recomendamos pausar: ' : '⚠️ Revisa: '}
-        {alert.title}
-      </div>
-      <div className="mt-0.5 opacity-90">{alert.message}</div>
+      <span className={`size-1.5 rounded-full ${paused ? 'bg-slate-400' : 'bg-emerald-500'}`} />
+      {paused ? 'Pausada' : 'Activa'}
+    </span>
+  );
+}
+
+function Metric({ label, value }) {
+  return (
+    <div>
+      <div className="text-[11px] font-medium text-slate-500">{label}</div>
+      <div className="text-sm font-semibold text-slate-900 tabular-nums mt-0.5">{value}</div>
     </div>
   );
 }
@@ -48,37 +74,37 @@ function CampaignCard({ campaign: c, currency, onToggle, busy }) {
 
   return (
     <div
-      className={`p-4 rounded-xl border transition-all ${
+      className={`p-4 rounded-2xl border bg-white transition-shadow ${
         isPaused
-          ? 'bg-slate-900/40 border-slate-800/60 opacity-60'
+          ? 'border-slate-200/80 bg-white/60'
           : shouldPause
-            ? 'bg-slate-900 border-red-500/40'
+            ? 'border-red-200 shadow-sm shadow-red-100 ring-1 ring-red-100'
             : c.alerts.length
-              ? 'bg-slate-900 border-amber-500/40'
-              : 'bg-slate-900 border-slate-800'
+              ? 'border-amber-200 shadow-sm shadow-amber-100'
+              : 'border-slate-200/80 shadow-xs'
       }`}
     >
       <div className="flex flex-col gap-3">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <span className="text-[10px] px-2 py-0.5 rounded font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
-              {CHANNEL_LABELS[c.channel] || 'Google'}
-            </span>
-            <h3 className="text-sm font-semibold text-slate-100 mt-1.5 break-words">{c.name}</h3>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <StatusPill paused={isPaused} />
+              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700">
+                {CHANNEL_LABELS[c.channel] || 'Google'}
+              </span>
+            </div>
+            <h3 className={`text-[15px] font-semibold mt-2 break-words ${isPaused ? 'text-slate-500' : 'text-slate-900'}`}>{c.name}</h3>
           </div>
-          <button
+          <Button
+            size="sm"
+            variant={isPaused ? 'secondary' : shouldPause ? 'danger' : 'secondary'}
+            icon={isPaused ? 'play' : 'pause'}
+            loading={busy}
             onClick={() => onToggle(c)}
-            disabled={busy}
-            className={`shrink-0 px-3 py-1 rounded-lg text-xs font-medium border transition-all disabled:opacity-50 ${
-              isPaused
-                ? 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'
-                : shouldPause
-                  ? 'bg-red-500/15 text-red-300 border-red-500/40 hover:bg-red-500/25'
-                  : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
-            }`}
+            className="shrink-0"
           >
-            {busy ? '...' : isPaused ? 'Activar' : 'Pausar'}
-          </button>
+            {isPaused ? 'Activar' : 'Pausar'}
+          </Button>
         </div>
 
         {/* Si hay que pausar, basta con ese motivo; las demás alertas sólo agregan ruido. */}
@@ -88,24 +114,15 @@ function CampaignCard({ campaign: c, currency, onToggle, busy }) {
             .map((a) => <AlertBox key={a.rule} alert={a} />)}
 
         {!isPaused && c.learning && (
-          <div className="text-xs text-slate-400 bg-slate-800/50 border border-slate-700/60 px-2.5 py-1.5 rounded-lg">
-            🌱 Aprendiendo: aún no hay suficientes datos para evaluarla.
-          </div>
+          <Alert tone="neutral" icon="sprout">
+            Aprendiendo: aún no hay suficientes datos para evaluarla.
+          </Alert>
         )}
 
-        <div className="grid grid-cols-3 gap-2 text-xs border-t border-slate-800/60 pt-2 text-slate-400">
-          <div>
-            Gasto
-            <strong className="block text-slate-200">{money(c.cost)}</strong>
-          </div>
-          <div>
-            Clics
-            <strong className="block text-slate-200">{c.clicks.toLocaleString('es-CL')}</strong>
-          </div>
-          <div>
-            Resultados
-            <strong className="block text-slate-200">{Math.round(c.conversions * 10) / 10}</strong>
-          </div>
+        <div className="grid grid-cols-3 gap-2 bg-slate-50 rounded-xl px-3 py-2.5">
+          <Metric label="Gasto" value={money(c.cost)} />
+          <Metric label="Clics" value={c.clicks.toLocaleString('es-CL')} />
+          <Metric label="Resultados" value={Math.round(c.conversions * 10) / 10} />
         </div>
       </div>
     </div>
@@ -114,35 +131,46 @@ function CampaignCard({ campaign: c, currency, onToggle, busy }) {
 
 function ConfirmDialog({ campaign, currency, onConfirm, onCancel }) {
   const pausing = campaign.status === 'active';
+
+  useEffect(() => {
+    const onKey = (e) => e.key === 'Escape' && onCancel();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onCancel]);
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-4" onClick={onCancel}>
+    <div
+      className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 motion-safe:animate-fade-in"
+      onClick={onCancel}
+    >
       <div
-        className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-2xl p-5"
+        className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl motion-safe:animate-slide-up"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
+        aria-labelledby="confirm-title"
       >
-        <h2 className="text-base font-semibold">{pausing ? '¿Pausar esta campaña?' : '¿Volver a activar esta campaña?'}</h2>
-        <p className="text-sm text-slate-300 mt-2">
-          <strong>{campaign.name}</strong>
-        </p>
-        <p className="text-xs text-slate-400 mt-2">
+        <div
+          className={`size-11 grid place-items-center rounded-2xl ${pausing ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}
+        >
+          <Icon name={pausing ? 'pause' : 'play'} className="size-5" />
+        </div>
+        <h2 id="confirm-title" className="text-lg font-semibold text-slate-900 mt-4">
+          {pausing ? '¿Pausar esta campaña?' : '¿Volver a activar esta campaña?'}
+        </h2>
+        <p className="text-sm font-medium text-slate-700 mt-1 break-words">{campaign.name}</p>
+        <p className="text-sm text-slate-500 mt-3 leading-relaxed">
           {pausing
             ? `Dejará de mostrarse y de gastar inmediatamente. En los últimos 30 días gastó ${formatMoney(campaign.cost, currency)}. Puedes reactivarla cuando quieras.`
             : 'Volverá a mostrarse y a gastar según su presupuesto diario.'}
         </p>
-        <div className="flex gap-2 mt-5">
-          <button onClick={onCancel} className="flex-1 py-2 rounded-lg text-sm border border-slate-700 text-slate-300 hover:bg-slate-800">
+        <div className="flex gap-2 mt-6">
+          <Button variant="secondary" onClick={onCancel} className="flex-1">
             Cancelar
-          </button>
-          <button
-            onClick={onConfirm}
-            className={`flex-1 py-2 rounded-lg text-sm font-medium ${
-              pausing ? 'bg-red-500/90 hover:bg-red-500 text-white' : 'bg-emerald-500/90 hover:bg-emerald-500 text-slate-950'
-            }`}
-          >
+          </Button>
+          <Button variant={pausing ? 'danger' : 'success'} onClick={onConfirm} className="flex-1" autoFocus>
             {pausing ? 'Sí, pausar' : 'Sí, activar'}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -153,39 +181,26 @@ function ConfirmDialog({ campaign, currency, onConfirm, onCancel }) {
  * Panel con resumen, alertas de cuenta y campañas.
  * `onSetStatus(campaign, 'PAUSED' | 'ENABLED')` debe devolver una promesa.
  */
-function EmptyState({ title, children, onChangeAccount }) {
-  return (
-    <div className="text-center py-10 px-4 bg-slate-900/50 border border-slate-800 rounded-xl">
-      <p className="text-sm font-semibold text-slate-200">{title}</p>
-      <p className="text-xs text-slate-400 mt-2">{children}</p>
-      {onChangeAccount && (
-        <button
-          onClick={onChangeAccount}
-          className="mt-4 px-4 py-2 rounded-lg text-xs bg-slate-800 border border-slate-700 hover:bg-slate-700"
-        >
-          Revisar otra cuenta
-        </button>
-      )}
-    </div>
-  );
-}
-
 export function Dashboard({ account, evaluation, onSetStatus, onChangeAccount }) {
   const [pending, setPending] = useState(null);
   const [busyId, setBusyId] = useState(null);
-  const [error, setError] = useState(null);
+  const [toast, setToast] = useState(null);
   const { summary, campaigns, accountAlerts } = evaluation;
   const money = (v) => formatMoney(v, account.currency);
+  const cancel = useCallback(() => setPending(null), []);
+  const dismissToast = useCallback(() => setToast(null), []);
 
   const confirm = async () => {
     const c = pending;
+    const pausing = c.status === 'active';
     setPending(null);
     setBusyId(c.id);
-    setError(null);
+    setToast(null);
     try {
-      await onSetStatus(c, c.status === 'active' ? 'PAUSED' : 'ENABLED');
+      await onSetStatus(c, pausing ? 'PAUSED' : 'ENABLED');
+      setToast({ tone: 'success', title: pausing ? 'Campaña pausada' : 'Campaña activada', message: c.name });
     } catch (e) {
-      setError(e.message);
+      setToast({ tone: 'danger', title: pausing ? 'No pudimos pausar la campaña' : 'No pudimos activar la campaña', message: e.message });
     } finally {
       setBusyId(null);
     }
@@ -193,50 +208,66 @@ export function Dashboard({ account, evaluation, onSetStatus, onChangeAccount })
 
   if (campaigns.length === 0) {
     return (
-      <EmptyState title="Esta cuenta todavía no tiene campañas" onChangeAccount={onChangeAccount}>
+      <StateCard
+        icon="search"
+        title="Esta cuenta todavía no tiene campañas"
+        action={
+          onChangeAccount && (
+            <Button variant="secondary" onClick={onChangeAccount}>
+              Revisar otra cuenta
+            </Button>
+          )
+        }
+      >
         Cuando crees una campaña en Google Ads aparecerá aquí y empezaremos a vigilar su gasto.
         {onChangeAccount && ' Si tus anuncios están en otra de tus cuentas, cámbiate a ella.'}
-      </EmptyState>
+      </StateCard>
     );
   }
 
   return (
-    <>
-      <p className="text-xs text-slate-400 mb-3">Últimos 30 días</p>
+    <div className="motion-safe:animate-fade-in">
+      <p className="text-xs font-medium uppercase tracking-wider text-slate-400 mb-3">Últimos 30 días</p>
 
-      <div className="grid grid-cols-2 gap-3 mb-4">
-        <StatCard label="Gasto" value={money(summary.totalCost)} />
-        <StatCard label="Resultados (ventas/contactos)" value={summary.measuring ? Math.round(summary.totalConversions) : '—'} />
-        <StatCard label="Campañas con alertas" value={`${summary.alertCount} / ${summary.activeCount}`} tone={summary.alertCount ? 'warn' : 'default'} />
+      <div className="grid grid-cols-2 gap-3 mb-5">
+        <StatCard icon="wallet" label="Gasto" value={money(summary.totalCost)} />
+        <StatCard icon="target" label="Resultados (ventas/contactos)" value={summary.measuring ? Math.round(summary.totalConversions) : '—'} />
         <StatCard
+          icon="bell"
+          label="Campañas con alertas"
+          value={`${summary.alertCount} / ${summary.activeCount}`}
+          tone={summary.alertCount ? 'warn' : 'default'}
+        />
+        <StatCard
+          icon="piggy"
           label="Podrías ahorrar al mes"
           value={money(summary.potentialSavings)}
           tone={summary.potentialSavings > 0 ? 'good' : 'default'}
         />
       </div>
 
-      {accountAlerts.map((a) => (
-        <div key={a.rule} className="mb-4">
-          <AlertBox alert={a} />
-        </div>
-      ))}
+      <div className="space-y-3 mb-5 empty:hidden">
+        {accountAlerts.map((a) => (
+          <AlertBox key={a.rule} alert={a} />
+        ))}
 
-      {error && <div className="mb-4 text-xs text-red-300 bg-red-500/10 border border-red-500/25 px-3 py-2 rounded-lg">{error}</div>}
+        {summary.activeCount === 0 && (
+          <Alert tone="success" title="Hoy no estás gastando dinero">
+            No tienes campañas activas. Abajo están tus campañas pausadas con lo que gastaron en los últimos 30 días; si reactivas
+            alguna, la vigilaremos por ti.
+          </Alert>
+        )}
+      </div>
 
-      {summary.activeCount === 0 && (
-        <div className="mb-4 text-xs text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-3 py-2.5 rounded-lg">
-          ✅ No tienes campañas activas, así que hoy no estás gastando dinero. Abajo están tus campañas pausadas con lo que
-          gastaron en los últimos 30 días; si reactivas alguna, la vigilaremos por ti.
-        </div>
-      )}
-
+      <h2 className="text-sm font-semibold text-slate-900 mb-3">Campañas</h2>
       <div className="space-y-3">
         {campaigns.map((c) => (
           <CampaignCard key={c.id} campaign={c} currency={account.currency} onToggle={setPending} busy={busyId === c.id} />
         ))}
       </div>
 
-      {pending && <ConfirmDialog campaign={pending} currency={account.currency} onConfirm={confirm} onCancel={() => setPending(null)} />}
-    </>
+      {pending && <ConfirmDialog campaign={pending} currency={account.currency} onConfirm={confirm} onCancel={cancel} />}
+      <Toast toast={toast} onDismiss={dismissToast} />
+    </div>
   );
 }

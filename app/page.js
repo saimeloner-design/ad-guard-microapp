@@ -5,6 +5,7 @@ import { signIn, signOut, useSession } from 'next-auth/react';
 import { evaluateAccount } from '@/lib/alerts';
 import { DEMO_ACCOUNT, DEMO_CAMPAIGNS } from '@/lib/demo-data';
 import { Dashboard } from './components/dashboard';
+import { Alert, Button, Icon, LoadingState, StateCard } from './components/ui';
 
 const ACCOUNT_KEY = 'adguard.customerId';
 
@@ -38,61 +39,85 @@ const connectGoogle = () => signIn('google');
 
 function Header({ subtitle, right }) {
   return (
-    <header className="flex justify-between items-center py-4 border-b border-slate-800 mb-6 gap-3">
-      <div className="min-w-0">
-        <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">AdGuard Micro</h1>
-        <p className="text-xs text-slate-400 truncate">{subtitle}</p>
+    <header className="sticky top-0 z-30 -mx-4 md:-mx-6 px-4 md:px-6 py-3 mb-6 bg-slate-50/80 backdrop-blur-md border-b border-slate-200/70">
+      <div className="flex justify-between items-center gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="size-9 shrink-0 grid place-items-center rounded-xl bg-linear-to-br from-indigo-500 to-emerald-500 text-white shadow-sm shadow-indigo-500/30">
+            <Icon name="shield" className="size-5" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-[15px] font-semibold text-slate-900 leading-tight">AdGuard Micro</h1>
+            <p className="text-xs text-slate-500 truncate">{subtitle}</p>
+          </div>
+        </div>
+        {right}
       </div>
-      {right}
     </header>
   );
 }
 
-function Message({ children, action }) {
-  return (
-    <div className="text-center py-12 px-4">
-      <p className="text-sm text-slate-300">{children}</p>
-      {action}
-    </div>
-  );
-}
-
 function ErrorState({ error, onRetry }) {
+  const reauth = error.code === 'REAUTH';
   return (
-    <Message
+    <StateCard
+      tone={reauth ? 'warning' : 'danger'}
+      icon={reauth ? 'refresh' : 'triangle'}
+      title={reauth ? 'Necesitamos que vuelvas a conectar Google' : 'No pudimos cargar tus datos'}
       action={
-        <button
-          onClick={error.code === 'REAUTH' ? connectGoogle : onRetry}
-          className="mt-4 px-4 py-2 rounded-lg text-sm bg-slate-800 border border-slate-700 hover:bg-slate-700"
-        >
-          {error.code === 'REAUTH' ? 'Volver a conectar' : 'Reintentar'}
-        </button>
+        <Button onClick={reauth ? connectGoogle : onRetry} icon="refresh">
+          {reauth ? 'Volver a conectar' : 'Reintentar'}
+        </Button>
       }
     >
       {error.message}
-    </Message>
+    </StateCard>
   );
 }
 
+const FEATURES = [
+  { icon: 'search', text: 'Revisamos tus campañas de los últimos 30 días' },
+  { icon: 'bell', text: 'Te avisamos cuáles gastan sin traer clientes' },
+  { icon: 'pause', text: 'Las pausas con un botón, cuando tú lo decidas' },
+];
+
 function Landing({ onDemo }) {
   return (
-    <div className="py-10 text-center">
-      <h2 className="text-2xl font-bold leading-tight">Deja de pagar por anuncios que no te traen clientes</h2>
-      <p className="text-sm text-slate-400 mt-3">
-        Conecta tu cuenta de Google Ads y te avisamos qué campañas están gastando tu dinero sin resultados. Las pausas con un botón.
+    <div className="py-8 sm:py-14 text-center motion-safe:animate-fade-in">
+      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full">
+        <Icon name="sparkles" className="size-3.5" />
+        Para negocios que anuncian en Google
+      </span>
+      <h2 className="mt-5 text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 text-balance">
+        Deja de pagar por anuncios que no te traen clientes
+      </h2>
+      <p className="mt-4 text-base text-slate-500 leading-relaxed text-pretty max-w-md mx-auto">
+        Conecta tu cuenta de Google Ads y te mostramos, en lenguaje simple, dónde se está yendo tu dinero.
       </p>
-      <button
-        onClick={connectGoogle}
-        className="mt-8 w-full sm:w-auto px-6 py-3 rounded-xl font-semibold bg-blue-600 hover:bg-blue-500 text-white"
-      >
-        Conectar con Google Ads
-      </button>
-      <div className="mt-4">
-        <button onClick={onDemo} className="text-sm text-slate-400 underline underline-offset-4 hover:text-slate-200">
-          Ver demo con datos de ejemplo
-        </button>
+
+      <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+        <Button size="lg" onClick={connectGoogle}>
+          Conectar con Google Ads
+        </Button>
+        <Button size="lg" variant="secondary" onClick={onDemo}>
+          Ver demo
+        </Button>
       </div>
-      <p className="text-[11px] text-slate-500 mt-10">Nunca cambiamos nada en tu cuenta sin que lo confirmes.</p>
+
+      <ul className="mt-12 grid gap-3 text-left">
+        {FEATURES.map((f) => (
+          <li key={f.text} className="flex items-center gap-3 bg-white border border-slate-200/80 rounded-2xl px-4 py-3 shadow-xs">
+            <span className="size-9 shrink-0 grid place-items-center rounded-xl bg-indigo-50 text-indigo-600">
+              <Icon name={f.icon} className="size-4.5" />
+            </span>
+            <span className="text-sm text-slate-700">{f.text}</span>
+          </li>
+        ))}
+      </ul>
+
+      <p className="mt-8 inline-flex items-center gap-1.5 text-xs text-slate-500">
+        <Icon name="shield" className="size-3.5 text-emerald-600" />
+        Nunca cambiamos nada en tu cuenta sin que lo confirmes.
+      </p>
     </div>
   );
 }
@@ -105,38 +130,62 @@ function DemoView() {
     setCampaigns((prev) => prev.map((c) => (c.id === campaign.id ? { ...c, status: status === 'ENABLED' ? 'active' : 'paused' } : c)));
   };
 
-  return <Dashboard account={DEMO_ACCOUNT} evaluation={evaluation} onSetStatus={onSetStatus} />;
+  return (
+    <>
+      <Alert
+        tone="info"
+        title="Estás viendo datos de ejemplo"
+        className="mb-6"
+        action={
+          <Button size="sm" onClick={connectGoogle}>
+            Conectar mi cuenta
+          </Button>
+        }
+      >
+        Pausar o activar aquí no cambia nada real. Conecta tu cuenta para revisar tus propias campañas.
+      </Alert>
+      <Dashboard account={DEMO_ACCOUNT} evaluation={evaluation} onSetStatus={onSetStatus} />
+    </>
+  );
 }
 
 function ManagerNote({ managers }) {
   if (managers.length === 0) return null;
   const names = managers.map((m) => m.name).join(', ');
   return (
-    <div className="mt-4 text-xs text-slate-400 bg-slate-900/60 border border-slate-800 px-3 py-2.5 rounded-lg">
-      ℹ️ También tienes {managers.length === 1 ? 'una cuenta de administrador' : 'cuentas de administrador'} ({names}). Ese tipo de
+    <Alert tone="neutral" className="mt-4">
+      También tienes {managers.length === 1 ? 'una cuenta de administrador' : 'cuentas de administrador'} ({names}). Ese tipo de
       cuenta (MCC) sirve para gestionar otras cuentas y para conectar apps como esta, pero no tiene anuncios propios, por eso no
       aparece en la lista.
-    </div>
+    </Alert>
   );
 }
 
+const formatCustomerId = (id) => id.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
+
 function AccountPicker({ accounts, managers, onSelect }) {
   return (
-    <div>
-      <h2 className="text-base font-semibold mb-1">¿Qué cuenta quieres revisar?</h2>
-      <p className="text-xs text-slate-400 mb-4">Tienes acceso a {accounts.length} cuentas de Google Ads con anuncios.</p>
-      <div className="space-y-2">
+    <div className="motion-safe:animate-fade-in">
+      <h2 className="text-xl font-semibold tracking-tight text-slate-900">¿Qué cuenta quieres revisar?</h2>
+      <p className="text-sm text-slate-500 mt-1 mb-5">Tienes acceso a {accounts.length} cuentas de Google Ads con anuncios.</p>
+      <div className="space-y-2.5">
         {accounts.map((a) => (
           <button
             key={a.id}
             onClick={() => onSelect(a.id)}
-            className="w-full text-left p-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-slate-600"
+            className="group w-full flex items-center gap-3 text-left p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs hover:border-indigo-300 hover:shadow-md hover:shadow-indigo-100 transition-all cursor-pointer focus-visible:outline-2 focus-visible:outline-indigo-500"
           >
-            <div className="text-sm font-semibold">{a.name}</div>
-            <div className="text-xs text-slate-400 mt-0.5">
-              {a.id.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3')} · {a.currency}
-              {a.testAccount && ' · cuenta de prueba'}
-            </div>
+            <span className="size-10 shrink-0 grid place-items-center rounded-xl bg-indigo-50 text-indigo-700 font-semibold">
+              {a.name.trim().charAt(0).toUpperCase()}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold text-slate-900 truncate">{a.name}</span>
+              <span className="block text-xs text-slate-500 mt-0.5">
+                {formatCustomerId(a.id)} · {a.currency}
+                {a.testAccount && ' · cuenta de prueba'}
+              </span>
+            </span>
+            <Icon name="chevron" className="size-5 shrink-0 text-slate-300 group-hover:text-indigo-500 transition-colors" />
           </button>
         ))}
       </div>
@@ -181,17 +230,9 @@ function LiveView({ account, onChangeAccount }) {
     }));
   };
 
-  return (
-    <>
-      {error ? (
-        <ErrorState error={error} onRetry={retry} />
-      ) : !evaluation ? (
-        <Message>Revisando tus campañas…</Message>
-      ) : (
-        <Dashboard account={data.account} evaluation={evaluation} onSetStatus={onSetStatus} onChangeAccount={onChangeAccount} />
-      )}
-    </>
-  );
+  if (error) return <ErrorState error={error} onRetry={retry} />;
+  if (!evaluation) return <LoadingState>Revisando tus campañas…</LoadingState>;
+  return <Dashboard account={data.account} evaluation={evaluation} onSetStatus={onSetStatus} onChangeAccount={onChangeAccount} />;
 }
 
 function ConnectedView() {
@@ -225,16 +266,16 @@ function ConnectedView() {
   };
 
   if (error) return <ErrorState error={error} onRetry={retry} />;
-  if (!accounts) return <Message>Buscando tus cuentas de Google Ads…</Message>;
+  if (!accounts) return <LoadingState>Buscando tus cuentas de Google Ads…</LoadingState>;
   if (accounts.length === 0) {
     return (
       <>
-        <Message>
+        <StateCard icon="search" title="No encontramos cuentas con anuncios">
           {notice ||
             (managers.length > 0
               ? 'Tu usuario sólo tiene acceso a una cuenta de administrador, sin cuentas con anuncios debajo.'
               : 'No encontramos cuentas de Google Ads asociadas a este usuario de Google. ¿Entraste con el correo correcto?')}
-        </Message>
+        </StateCard>
         <ManagerNote managers={managers} />
       </>
     );
@@ -244,12 +285,18 @@ function ConnectedView() {
   const account = accounts.find((a) => a.id === customerId);
   return (
     <>
-      <div className="flex items-baseline justify-between gap-3 mb-1">
-        <p className="text-sm font-semibold truncate">{account.name}</p>
+      <div className="flex items-center gap-3 mb-6 p-3 pr-2 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
+        <span className="size-9 shrink-0 grid place-items-center rounded-xl bg-indigo-50 text-indigo-700 text-sm font-semibold">
+          {account.name.trim().charAt(0).toUpperCase()}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-slate-900 truncate">{account.name}</p>
+          <p className="text-xs text-slate-500">{formatCustomerId(account.id)}</p>
+        </div>
         {accounts.length > 1 && (
-          <button onClick={() => select(null)} className="text-xs text-slate-400 underline underline-offset-4 shrink-0">
-            Cambiar de cuenta
-          </button>
+          <Button size="sm" variant="ghost" onClick={() => select(null)} className="shrink-0">
+            Cambiar
+          </Button>
         )}
       </div>
       <LiveView key={customerId} account={account} onChangeAccount={accounts.length > 1 ? () => select(null) : null} />
@@ -263,20 +310,20 @@ export default function Home() {
   const connected = status === 'authenticated' && session?.hasGoogleAds;
 
   const headerAction = connected ? (
-    <button onClick={() => signOut()} className="text-xs text-slate-400 hover:text-slate-200 shrink-0">
+    <Button size="sm" variant="ghost" icon="logout" onClick={() => signOut()} className="shrink-0">
       Salir
-    </button>
+    </Button>
   ) : demo ? (
-    <button onClick={() => setDemo(false)} className="text-xs text-slate-400 hover:text-slate-200 shrink-0">
+    <Button size="sm" variant="ghost" icon="x" onClick={() => setDemo(false)} className="shrink-0">
       Salir de la demo
-    </button>
+    </Button>
   ) : null;
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-6 font-sans max-w-2xl mx-auto w-full">
+    <main className="min-h-screen px-4 md:px-6 pb-16 max-w-2xl mx-auto w-full">
       <Header subtitle={demo && !connected ? 'Modo demo · datos de ejemplo' : 'Control de Anuncios Express'} right={headerAction} />
       {status === 'loading' ? (
-        <Message>Cargando…</Message>
+        <LoadingState>Cargando…</LoadingState>
       ) : connected ? (
         <ConnectedView />
       ) : demo ? (
