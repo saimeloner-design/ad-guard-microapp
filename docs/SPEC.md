@@ -99,7 +99,8 @@ Alerta a nivel cuenta:
 2. **Google Ads API habilitada** en ese proyecto.
 3. **Developer token** (se obtiene en una cuenta administradora MCC → Centro de API). Con nivel *Test* sólo funciona con cuentas de prueba; para clientes reales se necesita **Basic access** (solicitud a Google, días a semanas).
 4. **Verificación de la app OAuth**: el scope `adwords` es sensible. Mientras no esté verificada, sólo funcionan usuarios agregados como "test users" (máx. 100) y verán un aviso de "app no verificada".
-5. Variables de entorno: ver `.env.example`.
+5. **App de Meta** (fase 2): caso de uso "Crear y administrar anuncios" + "Inicio de sesión con Facebook para empresas". El login usa la configuración `META_LOGIN_CONFIG_ID` ("AdsGuard login", token de usuario) que pide sólo `email`, `ads_read` y `ads_management` (+ `public_profile`). Redirect URI `https://<dominio>/api/auth/callback/facebook`. Meta no entrega refresh token: al iniciar sesión el token se cambia por uno de larga duración (~60 días) y se guarda sólo en el JWT. Mientras la app no pase la revisión de Meta, sólo funciona con usuarios con rol en la app.
+6. Variables de entorno: ver `.env.example`.
 
 ## 6. Experiencia de usuario
 
