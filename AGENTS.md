@@ -5,6 +5,7 @@
 ## Datos del proyecto
 - Next.js 16 con next-auth
 - desplegado en Vercel
+- Sólo se prueba en producción (`https://ad-guard-microapp.vercel.app`, rama `main`). No se usa localhost ni los deploys de preview de Vercel: no hace falta configurar variables ni redirect URIs para esos entornos.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

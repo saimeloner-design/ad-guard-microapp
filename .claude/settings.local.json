@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(python3 -)",
+      "Bash(npx eslint *)",
+      "Bash(node -e ' *)",
+      "Bash(npx next *)"
     ]
   }
 }
