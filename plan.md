@@ -22,6 +22,6 @@ Variables que ya están en `.env.local`: `GOOGLE_ADS_CLIENT_ID`, `GOOGLE_ADS_CLI
 
 ## Pendiente en el código
 
-- [ ] Botón "Conectar con Meta" en `app/page.js` que llame a `signIn('facebook')`.
+- [x] Botón "Continuar con Meta" en `app/page.js` que llama a `signIn('facebook')`. Mientras no haya panel de Meta, muestra que la cuenta quedó conectada.
 - [ ] Rutas de datos de Meta equivalentes a las de Google (`/api/meta-ads/accounts`, `/api/meta-ads/campaigns`).
 - [ ] Que el panel use los datos de Meta cuando `session.hasMetaAds` es verdadero.

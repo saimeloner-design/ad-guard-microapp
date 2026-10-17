@@ -1,8 +1,51 @@
 @import "tailwindcss";
 
+/* El tema lo decide la clase .dark en <html> (ver app/components/theme.js), no sólo el sistema. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Colores semánticos: cada componente usa estos nombres y el tema cambia sus valores. */
+:root {
+  color-scheme: light;
+  --page: #f8fafc;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --surface-3: #f1f5f9;
+  --line: #e2e8f0;
+  --line-strong: #cbd5e1;
+  --fg: #0f172a;
+  --fg-2: #334155;
+  --muted: #64748b;
+  --faint: #94a3b8;
+}
+
+.dark {
+  color-scheme: dark;
+  --page: #0b1120;
+  --surface: #111a2e;
+  --surface-2: #17213a;
+  --surface-3: #1c2742;
+  --line: #24304a;
+  --line-strong: #34425f;
+  --fg: #f1f5f9;
+  --fg-2: #cbd5e1;
+  --muted: #94a3b8;
+  --faint: #64748b;
+}
+
 @theme inline {
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  --color-page: var(--page);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-fg: var(--fg);
+  --color-fg-2: var(--fg-2);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
 
   --animate-fade-in: fade-in 0.25s ease-out both;
   --animate-slide-up: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -22,12 +65,7 @@
   }
 }
 
-:root {
-  color-scheme: light;
-}
-
 body {
-  background: #f8fafc;
-  color: #0f172a;
+  background: var(--page);
+  color: var(--fg);
 }
-

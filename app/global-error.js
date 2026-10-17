@@ -11,6 +11,15 @@ export default function GlobalError({ error, retry }) {
 
   return (
     <html lang="es">
+      <head>
+        {/* Sin globals.css ni el script de tema: se sigue el modo del navegador. */}
+        <style>{`
+          :root { --bg: #f8fafc; --card: #fff; --line: #e2e8f0; --fg: #0f172a; --muted: #64748b; --tint: #fef2f2; --ring: #fee2e2; }
+          @media (prefers-color-scheme: dark) {
+            :root { --bg: #0b1120; --card: #111a2e; --line: #24304a; --fg: #f1f5f9; --muted: #94a3b8; --tint: rgba(239,68,68,.12); --ring: rgba(239,68,68,.08); }
+          }
+        `}</style>
+      </head>
       <body
         style={{
           minHeight: '100vh',
@@ -20,8 +29,8 @@ export default function GlobalError({ error, retry }) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: '#f8fafc',
-          color: '#0f172a',
+          background: 'var(--bg)',
+          color: 'var(--fg)',
           fontFamily: 'system-ui, -apple-system, sans-serif',
         }}
       >
@@ -31,8 +40,8 @@ export default function GlobalError({ error, retry }) {
             width: '100%',
             maxWidth: '24rem',
             textAlign: 'center',
-            background: '#fff',
-            border: '1px solid #e2e8f0',
+            background: 'var(--card)',
+            border: '1px solid var(--line)',
             borderRadius: '1rem',
             padding: '2.5rem 1.5rem',
             boxShadow: '0 1px 3px rgba(15, 23, 42, 0.06)',
@@ -46,9 +55,9 @@ export default function GlobalError({ error, retry }) {
               display: 'grid',
               placeItems: 'center',
               borderRadius: '1rem',
-              background: '#fef2f2',
+              background: 'var(--tint)',
               color: '#dc2626',
-              boxShadow: '0 0 0 4px #fee2e2',
+              boxShadow: '0 0 0 4px var(--ring)',
             }}
           >
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -57,7 +66,7 @@ export default function GlobalError({ error, retry }) {
             </svg>
           </div>
           <h1 style={{ fontSize: '1.125rem', fontWeight: 600, margin: '1rem 0 0' }}>Algo salió mal</h1>
-          <p style={{ fontSize: '0.875rem', lineHeight: 1.6, color: '#64748b', margin: '0.5rem 0 0' }}>
+          <p style={{ fontSize: '0.875rem', lineHeight: 1.6, color: 'var(--muted)', margin: '0.5rem 0 0' }}>
             Tuvimos un problema inesperado. Ya nos llegó el aviso; intenta de nuevo en un momento.
           </p>
           <button

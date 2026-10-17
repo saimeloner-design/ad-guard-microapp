@@ -1,11 +1,15 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn, signOut, useSession } from 'next-auth/react';
+import { Bell, ChevronRight, LogOut, Pause, RefreshCw, Search, ShieldCheck, Sparkles, TriangleAlert, X } from 'lucide-react';
 import { evaluateAccount } from '@/lib/alerts';
 import { DEMO_ACCOUNT, DEMO_CAMPAIGNS } from '@/lib/demo-data';
 import { Dashboard } from './components/dashboard';
-import { Alert, Button, Icon, LoadingState, StateCard } from './components/ui';
+import { GoogleLogo, MetaLogo } from './components/brand-icons';
+import { ThemeToggle } from './components/theme';
+import { Alert, Button, LoadingState, StateCard } from './components/ui';
 
 const ACCOUNT_KEY = 'adguard.customerId';
 
@@ -37,20 +41,62 @@ async function fetchJson(url, options) {
 
 const connectGoogle = () => signIn('google');
 
+const PROVIDERS = [
+  { id: 'google', label: 'Continuar con Google', Logo: GoogleLogo },
+  { id: 'facebook', label: 'Continuar con Meta', Logo: MetaLogo },
+];
+
+// Códigos con los que next-auth vuelve a la página (pages.error en lib/auth.js).
+const LOGIN_ERRORS = {
+  OAuthSignin: 'No pudimos abrir la ventana de inicio de sesión. Intenta de nuevo en un momento.',
+  OAuthCallback: 'La conexión no se completó. Si cancelaste o desmarcaste algún permiso, vuelve a intentarlo y acéptalos todos.',
+  AccessDenied: 'No se concedió el acceso. Vuelve a intentarlo y acepta los permisos para que podamos revisar tus anuncios.',
+  Configuration: 'Hay un problema de configuración de nuestro lado. Ya nos llegó el aviso; intenta más tarde.',
+};
+
+function LoginButtons() {
+  const [connecting, setConnecting] = useState(null);
+  const connect = (id) => {
+    setConnecting(id);
+    signIn(id);
+  };
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {PROVIDERS.map(({ id, label, Logo }) => (
+        <Button
+          key={id}
+          size="lg"
+          variant="secondary"
+          icon={Logo}
+          loading={connecting === id}
+          disabled={connecting !== null}
+          onClick={() => connect(id)}
+          className="w-full text-fg"
+        >
+          {label}
+        </Button>
+      ))}
+    </div>
+  );
+}
+
 function Header({ subtitle, right }) {
   return (
-    <header className="sticky top-0 z-30 -mx-4 md:-mx-6 px-4 md:px-6 py-3 mb-6 bg-slate-50/80 backdrop-blur-md border-b border-slate-200/70">
+    <header className="sticky top-0 z-30 -mx-4 md:-mx-6 px-4 md:px-6 py-3 mb-6 bg-page/80 backdrop-blur-md border-b border-line">
       <div className="flex justify-between items-center gap-3">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="size-9 shrink-0 grid place-items-center rounded-xl bg-linear-to-br from-indigo-500 to-emerald-500 text-white shadow-sm shadow-indigo-500/30">
-            <Icon name="shield" className="size-5" />
+            <ShieldCheck className="size-5" aria-hidden="true" />
           </div>
           <div className="min-w-0">
-            <h1 className="text-[15px] font-semibold text-slate-900 leading-tight">AdGuard Micro</h1>
-            <p className="text-xs text-slate-500 truncate">{subtitle}</p>
+            <h1 className="text-[15px] font-semibold text-fg leading-tight">AdGuard Micro</h1>
+            <p className="text-xs text-muted truncate">{subtitle}</p>
           </div>
         </div>
-        {right}
+        <div className="flex items-center gap-2 shrink-0">
+          <ThemeToggle />
+          {right}
+        </div>
       </div>
     </header>
   );
@@ -61,12 +107,18 @@ function ErrorState({ error, onRetry }) {
   return (
     <StateCard
       tone={reauth ? 'warning' : 'danger'}
-      icon={reauth ? 'refresh' : 'triangle'}
+      icon={reauth ? RefreshCw : TriangleAlert}
       title={reauth ? 'Necesitamos que vuelvas a conectar Google' : 'No pudimos cargar tus datos'}
       action={
-        <Button onClick={reauth ? connectGoogle : onRetry} icon="refresh">
-          {reauth ? 'Volver a conectar' : 'Reintentar'}
-        </Button>
+        reauth ? (
+          <Button variant="secondary" icon={GoogleLogo} onClick={connectGoogle}>
+            Volver a conectar
+          </Button>
+        ) : (
+          <Button icon={RefreshCw} onClick={onRetry}>
+            Reintentar
+          </Button>
+        )
       }
     >
       {error.message}
@@ -75,50 +127,71 @@ function ErrorState({ error, onRetry }) {
 }
 
 const FEATURES = [
-  { icon: 'search', text: 'Revisamos tus campañas de los últimos 30 días' },
-  { icon: 'bell', text: 'Te avisamos cuáles gastan sin traer clientes' },
-  { icon: 'pause', text: 'Las pausas con un botón, cuando tú lo decidas' },
+  { Icon: Search, text: 'Revisamos tus campañas de los últimos 30 días' },
+  { Icon: Bell, text: 'Te avisamos cuáles gastan sin traer clientes' },
+  { Icon: Pause, text: 'Las pausas con un botón, cuando tú lo decidas' },
 ];
 
-function Landing({ onDemo }) {
+function Landing({ onDemo, notice }) {
   return (
     <div className="py-8 sm:py-14 text-center motion-safe:animate-fade-in">
-      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 border border-indigo-100 px-3 py-1 rounded-full">
-        <Icon name="sparkles" className="size-3.5" />
-        Para negocios que anuncian en Google
+      {notice}
+      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 border border-indigo-100 dark:text-indigo-300 dark:bg-indigo-500/10 dark:border-indigo-500/20 px-3 py-1 rounded-full">
+        <Sparkles className="size-3.5" aria-hidden="true" />
+        Para negocios que anuncian en Google y Meta
       </span>
-      <h2 className="mt-5 text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 text-balance">
+      <h2 className="mt-5 text-3xl sm:text-4xl font-bold tracking-tight text-fg text-balance">
         Deja de pagar por anuncios que no te traen clientes
       </h2>
-      <p className="mt-4 text-base text-slate-500 leading-relaxed text-pretty max-w-md mx-auto">
-        Conecta tu cuenta de Google Ads y te mostramos, en lenguaje simple, dónde se está yendo tu dinero.
+      <p className="mt-4 text-base text-muted leading-relaxed text-pretty max-w-md mx-auto">
+        Conecta tu cuenta de anuncios y te mostramos, en lenguaje simple, dónde se está yendo tu dinero.
       </p>
 
-      <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
-        <Button size="lg" onClick={connectGoogle}>
-          Conectar con Google Ads
-        </Button>
-        <Button size="lg" variant="secondary" onClick={onDemo}>
-          Ver demo
-        </Button>
+      <div className="mt-8 max-w-md mx-auto">
+        <LoginButtons />
+        <button
+          onClick={onDemo}
+          className="mt-4 text-sm font-medium text-muted hover:text-fg underline underline-offset-4 decoration-line-strong cursor-pointer"
+        >
+          Ver demo con datos de ejemplo
+        </button>
       </div>
 
       <ul className="mt-12 grid gap-3 text-left">
-        {FEATURES.map((f) => (
-          <li key={f.text} className="flex items-center gap-3 bg-white border border-slate-200/80 rounded-2xl px-4 py-3 shadow-xs">
-            <span className="size-9 shrink-0 grid place-items-center rounded-xl bg-indigo-50 text-indigo-600">
-              <Icon name={f.icon} className="size-4.5" />
+        {FEATURES.map(({ Icon, text }) => (
+          <li key={text} className="flex items-center gap-3 bg-surface border border-line rounded-2xl px-4 py-3 shadow-xs">
+            <span className="size-9 shrink-0 grid place-items-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300">
+              <Icon className="size-4.5" aria-hidden="true" />
             </span>
-            <span className="text-sm text-slate-700">{f.text}</span>
+            <span className="text-sm text-fg-2">{text}</span>
           </li>
         ))}
       </ul>
 
-      <p className="mt-8 inline-flex items-center gap-1.5 text-xs text-slate-500">
-        <Icon name="shield" className="size-3.5 text-emerald-600" />
+      <p className="mt-8 inline-flex items-center gap-1.5 text-xs text-muted">
+        <ShieldCheck className="size-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
         Nunca cambiamos nada en tu cuenta sin que lo confirmes.
       </p>
     </div>
+  );
+}
+
+/** Por ahora sólo hay panel para Google Ads; la sesión de Meta ya queda lista para cuando exista. */
+function MetaConnectedView() {
+  return (
+    <StateCard
+      tone="brand"
+      icon={MetaLogo}
+      title="Tu cuenta de Meta quedó conectada"
+      action={
+        <Button variant="secondary" icon={GoogleLogo} onClick={connectGoogle}>
+          Revisar Google Ads
+        </Button>
+      }
+    >
+      Estamos terminando la revisión de campañas de Facebook e Instagram; pronto aparecerán aquí. Si también anuncias en Google,
+      puedes revisar esas campañas ahora.
+    </StateCard>
   );
 }
 
@@ -137,8 +210,8 @@ function DemoView() {
         title="Estás viendo datos de ejemplo"
         className="mb-6"
         action={
-          <Button size="sm" onClick={connectGoogle}>
-            Conectar mi cuenta
+          <Button size="sm" variant="secondary" icon={GoogleLogo} onClick={connectGoogle}>
+            Conectar Google Ads
           </Button>
         }
       >
@@ -166,26 +239,26 @@ const formatCustomerId = (id) => id.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3')
 function AccountPicker({ accounts, managers, onSelect }) {
   return (
     <div className="motion-safe:animate-fade-in">
-      <h2 className="text-xl font-semibold tracking-tight text-slate-900">¿Qué cuenta quieres revisar?</h2>
-      <p className="text-sm text-slate-500 mt-1 mb-5">Tienes acceso a {accounts.length} cuentas de Google Ads con anuncios.</p>
+      <h2 className="text-xl font-semibold tracking-tight text-fg">¿Qué cuenta quieres revisar?</h2>
+      <p className="text-sm text-muted mt-1 mb-5">Tienes acceso a {accounts.length} cuentas de Google Ads con anuncios.</p>
       <div className="space-y-2.5">
         {accounts.map((a) => (
           <button
             key={a.id}
             onClick={() => onSelect(a.id)}
-            className="group w-full flex items-center gap-3 text-left p-4 rounded-2xl bg-white border border-slate-200/80 shadow-xs hover:border-indigo-300 hover:shadow-md hover:shadow-indigo-100 transition-all cursor-pointer focus-visible:outline-2 focus-visible:outline-indigo-500"
+            className="group w-full flex items-center gap-3 text-left p-4 rounded-2xl bg-surface border border-line shadow-xs hover:border-indigo-300 hover:shadow-md hover:shadow-indigo-100 dark:hover:border-indigo-500/50 dark:hover:shadow-none transition-all cursor-pointer focus-visible:outline-2 focus-visible:outline-indigo-500"
           >
-            <span className="size-10 shrink-0 grid place-items-center rounded-xl bg-indigo-50 text-indigo-700 font-semibold">
+            <span className="size-10 shrink-0 grid place-items-center rounded-xl bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300 font-semibold">
               {a.name.trim().charAt(0).toUpperCase()}
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold text-slate-900 truncate">{a.name}</span>
-              <span className="block text-xs text-slate-500 mt-0.5">
+              <span className="block text-sm font-semibold text-fg truncate">{a.name}</span>
+              <span className="block text-xs text-muted mt-0.5">
                 {formatCustomerId(a.id)} · {a.currency}
                 {a.testAccount && ' · cuenta de prueba'}
               </span>
             </span>
-            <Icon name="chevron" className="size-5 shrink-0 text-slate-300 group-hover:text-indigo-500 transition-colors" />
+            <ChevronRight className="size-5 shrink-0 text-faint group-hover:text-indigo-500 transition-colors" aria-hidden="true" />
           </button>
         ))}
       </div>
@@ -270,7 +343,7 @@ function ConnectedView() {
   if (accounts.length === 0) {
     return (
       <>
-        <StateCard icon="search" title="No encontramos cuentas con anuncios">
+        <StateCard icon={Search} title="No encontramos cuentas con anuncios">
           {notice ||
             (managers.length > 0
               ? 'Tu usuario sólo tiene acceso a una cuenta de administrador, sin cuentas con anuncios debajo.'
@@ -285,13 +358,13 @@ function ConnectedView() {
   const account = accounts.find((a) => a.id === customerId);
   return (
     <>
-      <div className="flex items-center gap-3 mb-6 p-3 pr-2 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
-        <span className="size-9 shrink-0 grid place-items-center rounded-xl bg-indigo-50 text-indigo-700 text-sm font-semibold">
+      <div className="flex items-center gap-3 mb-6 p-3 pr-2 rounded-2xl bg-surface border border-line shadow-xs">
+        <span className="size-9 shrink-0 grid place-items-center rounded-xl bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300 text-sm font-semibold">
           {account.name.trim().charAt(0).toUpperCase()}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-slate-900 truncate">{account.name}</p>
-          <p className="text-xs text-slate-500">{formatCustomerId(account.id)}</p>
+          <p className="text-sm font-semibold text-fg truncate">{account.name}</p>
+          <p className="text-xs text-muted">{formatCustomerId(account.id)}</p>
         </div>
         {accounts.length > 1 && (
           <Button size="sm" variant="ghost" onClick={() => select(null)} className="shrink-0">
@@ -304,33 +377,74 @@ function ConnectedView() {
   );
 }
 
-export default function Home() {
-  const { data: session, status } = useSession();
-  const [demo, setDemo] = useState(false);
-  const connected = status === 'authenticated' && session?.hasGoogleAds;
+function LoginError({ code, onDismiss }) {
+  return (
+    <Alert tone="danger" title="No pudimos conectar tu cuenta" onDismiss={onDismiss} className="mb-8 text-left">
+      {LOGIN_ERRORS[code] || 'Algo falló al iniciar sesión. Intenta de nuevo.'}
+    </Alert>
+  );
+}
 
-  const headerAction = connected ? (
-    <Button size="sm" variant="ghost" icon="logout" onClick={() => signOut()} className="shrink-0">
+function Home() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const loginError = useSearchParams().get('error');
+  const [demo, setDemo] = useState(false);
+  const authenticated = status === 'authenticated';
+  const google = authenticated && session?.hasGoogleAds;
+  const meta = authenticated && !google && session?.hasMetaAds;
+
+  const headerAction = authenticated ? (
+    <Button size="sm" variant="ghost" icon={LogOut} onClick={() => signOut()}>
       Salir
     </Button>
   ) : demo ? (
-    <Button size="sm" variant="ghost" icon="x" onClick={() => setDemo(false)} className="shrink-0">
-      Salir de la demo
+    <Button size="sm" variant="ghost" icon={X} onClick={() => setDemo(false)}>
+      Salir<span className="hidden sm:inline">&nbsp;de la demo</span>
     </Button>
   ) : null;
 
+  const subtitle = google
+    ? 'Conectado con Google Ads'
+    : meta
+      ? 'Conectado con Meta'
+      : demo
+        ? 'Modo demo · datos de ejemplo'
+        : 'Control de Anuncios Express';
+
+  // Sesión iniciada pero sin token de anuncios: el usuario no concedió los permisos.
+  const notice =
+    authenticated && !google && !meta ? (
+      <Alert tone="warning" title="Falta el permiso para ver tus anuncios" className="mb-8 text-left">
+        Iniciaste sesión, pero no recibimos acceso a tus anuncios. Vuelve a conectar y deja marcados todos los permisos.
+      </Alert>
+    ) : loginError ? (
+      <LoginError code={loginError} onDismiss={() => router.replace('/', { scroll: false })} />
+    ) : null;
+
   return (
     <main className="min-h-screen px-4 md:px-6 pb-16 max-w-2xl mx-auto w-full">
-      <Header subtitle={demo && !connected ? 'Modo demo · datos de ejemplo' : 'Control de Anuncios Express'} right={headerAction} />
+      <Header subtitle={subtitle} right={headerAction} />
       {status === 'loading' ? (
         <LoadingState>Cargando…</LoadingState>
-      ) : connected ? (
+      ) : google ? (
         <ConnectedView />
+      ) : meta ? (
+        <MetaConnectedView />
       ) : demo ? (
         <DemoView />
       ) : (
-        <Landing onDemo={() => setDemo(true)} />
+        <Landing onDemo={() => setDemo(true)} notice={notice} />
       )}
     </main>
+  );
+}
+
+// useSearchParams necesita un Suspense para que la página siga siendo estática.
+export default function Page() {
+  return (
+    <Suspense fallback={<LoadingState>Cargando…</LoadingState>}>
+      <Home />
+    </Suspense>
   );
 }

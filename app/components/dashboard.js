@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { formatMoney, SEVERITY } from '@/lib/alerts';
-import { Alert, Button, Icon, StateCard, Toast } from './ui';
+import { Bell, Pause, PiggyBank, Play, Search, Sprout, Target, Wallet } from 'lucide-react';
+import { Alert, Button, StateCard, Toast } from './ui';
 
 const CHANNEL_LABELS = {
   SEARCH: 'Búsqueda',
@@ -16,20 +17,20 @@ const CHANNEL_LABELS = {
 };
 
 const STAT_TONES = {
-  default: { value: 'text-slate-900', icon: 'bg-slate-100 text-slate-500' },
-  warn: { value: 'text-amber-600', icon: 'bg-amber-50 text-amber-600' },
-  good: { value: 'text-emerald-600', icon: 'bg-emerald-50 text-emerald-600' },
+  default: { value: 'text-fg', icon: 'bg-surface-3 text-muted' },
+  warn: { value: 'text-amber-600 dark:text-amber-400', icon: 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400' },
+  good: { value: 'text-emerald-600 dark:text-emerald-400', icon: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400' },
 };
 
-function StatCard({ label, value, icon, tone = 'default' }) {
+function StatCard({ label, value, icon: StatIcon, tone = 'default' }) {
   const t = STAT_TONES[tone];
   return (
-    <div className="bg-white border border-slate-200/80 rounded-2xl p-4 shadow-xs">
+    <div className="bg-surface border border-line rounded-2xl p-4 shadow-xs">
       <div className="flex items-center gap-2">
         <span className={`size-7 grid place-items-center rounded-lg ${t.icon}`}>
-          <Icon name={icon} className="size-4" />
+          <StatIcon className="size-4" aria-hidden="true" />
         </span>
-        <span className="text-xs font-medium text-slate-500 leading-tight">{label}</span>
+        <span className="text-xs font-medium text-muted leading-tight">{label}</span>
       </div>
       <div className={`text-xl font-semibold mt-2.5 tabular-nums tracking-tight ${t.value}`}>{value}</div>
     </div>
@@ -49,10 +50,10 @@ function StatusPill({ paused }) {
   return (
     <span
       className={`inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded-full ${
-        paused ? 'bg-slate-100 text-slate-500' : 'bg-emerald-50 text-emerald-700'
+        paused ? 'bg-surface-3 text-muted' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
       }`}
     >
-      <span className={`size-1.5 rounded-full ${paused ? 'bg-slate-400' : 'bg-emerald-500'}`} />
+      <span className={`size-1.5 rounded-full ${paused ? 'bg-faint' : 'bg-emerald-500'}`} />
       {paused ? 'Pausada' : 'Activa'}
     </span>
   );
@@ -61,8 +62,8 @@ function StatusPill({ paused }) {
 function Metric({ label, value }) {
   return (
     <div>
-      <div className="text-[11px] font-medium text-slate-500">{label}</div>
-      <div className="text-sm font-semibold text-slate-900 tabular-nums mt-0.5">{value}</div>
+      <div className="text-[11px] font-medium text-muted">{label}</div>
+      <div className="text-sm font-semibold text-fg tabular-nums mt-0.5">{value}</div>
     </div>
   );
 }
@@ -74,14 +75,14 @@ function CampaignCard({ campaign: c, currency, onToggle, busy }) {
 
   return (
     <div
-      className={`p-4 rounded-2xl border bg-white transition-shadow ${
+      className={`p-4 rounded-2xl border transition-shadow ${
         isPaused
-          ? 'border-slate-200/80 bg-white/60'
+          ? 'border-line bg-surface/60'
           : shouldPause
-            ? 'border-red-200 shadow-sm shadow-red-100 ring-1 ring-red-100'
+            ? 'bg-surface border-red-200 shadow-sm shadow-red-100 ring-1 ring-red-100 dark:border-red-500/40 dark:shadow-none dark:ring-red-500/10'
             : c.alerts.length
-              ? 'border-amber-200 shadow-sm shadow-amber-100'
-              : 'border-slate-200/80 shadow-xs'
+              ? 'bg-surface border-amber-200 shadow-sm shadow-amber-100 dark:border-amber-500/35 dark:shadow-none'
+              : 'bg-surface border-line shadow-xs'
       }`}
     >
       <div className="flex flex-col gap-3">
@@ -89,16 +90,16 @@ function CampaignCard({ campaign: c, currency, onToggle, busy }) {
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-1.5">
               <StatusPill paused={isPaused} />
-              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700">
+              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
                 {CHANNEL_LABELS[c.channel] || 'Google'}
               </span>
             </div>
-            <h3 className={`text-[15px] font-semibold mt-2 break-words ${isPaused ? 'text-slate-500' : 'text-slate-900'}`}>{c.name}</h3>
+            <h3 className={`text-[15px] font-semibold mt-2 break-words ${isPaused ? 'text-muted' : 'text-fg'}`}>{c.name}</h3>
           </div>
           <Button
             size="sm"
             variant={isPaused ? 'secondary' : shouldPause ? 'danger' : 'secondary'}
-            icon={isPaused ? 'play' : 'pause'}
+            icon={isPaused ? Play : Pause}
             loading={busy}
             onClick={() => onToggle(c)}
             className="shrink-0"
@@ -114,12 +115,12 @@ function CampaignCard({ campaign: c, currency, onToggle, busy }) {
             .map((a) => <AlertBox key={a.rule} alert={a} />)}
 
         {!isPaused && c.learning && (
-          <Alert tone="neutral" icon="sprout">
+          <Alert tone="neutral" icon={Sprout}>
             Aprendiendo: aún no hay suficientes datos para evaluarla.
           </Alert>
         )}
 
-        <div className="grid grid-cols-3 gap-2 bg-slate-50 rounded-xl px-3 py-2.5">
+        <div className="grid grid-cols-3 gap-2 bg-surface-2 rounded-xl px-3 py-2.5">
           <Metric label="Gasto" value={money(c.cost)} />
           <Metric label="Clics" value={c.clicks.toLocaleString('es-CL')} />
           <Metric label="Resultados" value={Math.round(c.conversions * 10) / 10} />
@@ -140,26 +141,26 @@ function ConfirmDialog({ campaign, currency, onConfirm, onCancel }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 motion-safe:animate-fade-in"
+      className="fixed inset-0 z-50 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 motion-safe:animate-fade-in"
       onClick={onCancel}
     >
       <div
-        className="w-full max-w-sm bg-white rounded-3xl p-6 shadow-2xl motion-safe:animate-slide-up"
+        className="w-full max-w-sm bg-surface border border-transparent dark:border-line rounded-3xl p-6 shadow-2xl motion-safe:animate-slide-up"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-title"
       >
         <div
-          className={`size-11 grid place-items-center rounded-2xl ${pausing ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}
+          className={`size-11 grid place-items-center rounded-2xl ${pausing ? 'bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400' : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400'}`}
         >
-          <Icon name={pausing ? 'pause' : 'play'} className="size-5" />
+          {pausing ? <Pause className="size-5" aria-hidden="true" /> : <Play className="size-5" aria-hidden="true" />}
         </div>
-        <h2 id="confirm-title" className="text-lg font-semibold text-slate-900 mt-4">
+        <h2 id="confirm-title" className="text-lg font-semibold text-fg mt-4">
           {pausing ? '¿Pausar esta campaña?' : '¿Volver a activar esta campaña?'}
         </h2>
-        <p className="text-sm font-medium text-slate-700 mt-1 break-words">{campaign.name}</p>
-        <p className="text-sm text-slate-500 mt-3 leading-relaxed">
+        <p className="text-sm font-medium text-fg-2 mt-1 break-words">{campaign.name}</p>
+        <p className="text-sm text-muted mt-3 leading-relaxed">
           {pausing
             ? `Dejará de mostrarse y de gastar inmediatamente. En los últimos 30 días gastó ${formatMoney(campaign.cost, currency)}. Puedes reactivarla cuando quieras.`
             : 'Volverá a mostrarse y a gastar según su presupuesto diario.'}
@@ -209,7 +210,7 @@ export function Dashboard({ account, evaluation, onSetStatus, onChangeAccount })
   if (campaigns.length === 0) {
     return (
       <StateCard
-        icon="search"
+        icon={Search}
         title="Esta cuenta todavía no tiene campañas"
         action={
           onChangeAccount && (
@@ -227,19 +228,19 @@ export function Dashboard({ account, evaluation, onSetStatus, onChangeAccount })
 
   return (
     <div className="motion-safe:animate-fade-in">
-      <p className="text-xs font-medium uppercase tracking-wider text-slate-400 mb-3">Últimos 30 días</p>
+      <p className="text-xs font-medium uppercase tracking-wider text-faint mb-3">Últimos 30 días</p>
 
       <div className="grid grid-cols-2 gap-3 mb-5">
-        <StatCard icon="wallet" label="Gasto" value={money(summary.totalCost)} />
-        <StatCard icon="target" label="Resultados (ventas/contactos)" value={summary.measuring ? Math.round(summary.totalConversions) : '—'} />
+        <StatCard icon={Wallet} label="Gasto" value={money(summary.totalCost)} />
+        <StatCard icon={Target} label="Resultados (ventas/contactos)" value={summary.measuring ? Math.round(summary.totalConversions) : '—'} />
         <StatCard
-          icon="bell"
+          icon={Bell}
           label="Campañas con alertas"
           value={`${summary.alertCount} / ${summary.activeCount}`}
           tone={summary.alertCount ? 'warn' : 'default'}
         />
         <StatCard
-          icon="piggy"
+          icon={PiggyBank}
           label="Podrías ahorrar al mes"
           value={money(summary.potentialSavings)}
           tone={summary.potentialSavings > 0 ? 'good' : 'default'}
@@ -259,7 +260,7 @@ export function Dashboard({ account, evaluation, onSetStatus, onChangeAccount })
         )}
       </div>
 
-      <h2 className="text-sm font-semibold text-slate-900 mb-3">Campañas</h2>
+      <h2 className="text-sm font-semibold text-fg mb-3">Campañas</h2>
       <div className="space-y-3">
         {campaigns.map((c) => (
           <CampaignCard key={c.id} campaign={c} currency={account.currency} onToggle={setPending} busy={busyId === c.id} />
