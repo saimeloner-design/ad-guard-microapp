@@ -1,6 +1,7 @@
 ## Consideraciones generales
 - Responde siempre en español
 - Después de hacer un commit, haz siempre `git push`
+- Después de cada `git push`, lanza `npm run notify:deploy` en segundo plano para que avise con terminal-notifier cuando termine el deploy de producción
 
 ## Datos del proyecto
 - Next.js 16 con next-auth
