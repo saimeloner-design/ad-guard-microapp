@@ -96,6 +96,50 @@ Alerta a nivel cuenta:
 - Valores exactos de los multiplicadores (2×, 2,5×, 3×) tras ver cuentas reales.
 - Mostrar "dinero que podrías ahorrar" = gasto mensual de campañas con alerta Pausar.
 
+## 4b. Criterios de alerta de Meta Ads
+
+Código: `lib/alerts-meta.js` (umbrales en `META_ALERT_CONFIG`). Ventana: últimos 30 días.
+
+### El resultado depende del objetivo
+| Objetivo | Resultado | Costo mostrado |
+|---|---|---|
+| Ventas | Compras (+ valor de las ventas si se mide) | Costo por compra |
+| Clientes potenciales | Formularios, contactos y registros | Costo por contacto |
+| Mensajes (conjunto optimizado para conversaciones) | Conversaciones iniciadas | Costo por conversación |
+| Promoción de app | Instalaciones | Costo por instalación |
+| Tráfico | Clics en el enlace | Costo por clic |
+| Interacción | Interacciones | Costo por interacción |
+| Reconocimiento | Personas alcanzadas | Costo por 1.000 personas |
+
+Los clics son siempre clics en el enlace (`inline_link_clicks`); los clics totales incluyen me gusta y comentarios.
+
+### Referencia para decir "caro"
+En orden, se usa la primera que exista (mínimo 5 resultados):
+1. Otras campañas con el mismo tipo de resultado en los últimos 90 días (incluye pausadas y terminadas).
+2. La misma campaña en los 30 días anteriores.
+3. Ninguna: no se juzga si es caro; sólo aplican las reglas que no comparan.
+
+### Datos mínimos
+No se evalúa (se marca "Aprendiendo") si algún conjunto que publica está en fase de aprendizaje de Meta, o si tiene < 1.000 impresiones y < 30 clics en el enlace. Una campaña activa sin conjuntos publicando se muestra como "Activa, sin publicar" y sólo recibe M6.
+
+### Reglas
+| # | Regla | Condición | Severidad |
+|---|---|---|---|
+| M1 | Gasta sin resultados | Objetivo con resultado concreto (ventas, contactos, mensajes, app), 0 resultados y gasto ≥ 2× el costo por resultado de referencia **o** ≥ 50 clics en el enlace | **Pausar** |
+| M2 | Resultado caro | Costo por resultado ≥ 2,5× otras campañas con el mismo objetivo, o ≥ 2× el mes anterior de la misma campaña | Revisar |
+| M3 | Vende menos de lo que gasta | Ventas con valor medido, ≥ 5 compras y valor/gasto < 1 | Revisar |
+| M4 | Anuncio desgastado | Frecuencia de 7 días ≥ 3 y CTR de 7 días ≥ 30% menor que el de los 23 días anteriores (≥ 1.000 impresiones en cada período). No aplica a reconocimiento | Revisar |
+| M5 | Aprendizaje limitado | Meta marca un conjunto activo con aprendizaje limitado | Revisar |
+| M6 | Anuncios rechazados | Anuncios rechazados o con problemas en una campaña activa (siempre, aunque esté aprendiendo) | Revisar |
+| M7 | Clics que no llegan a la web | Ventas, contactos o tráfico; ≥ 100 clics y visitas a la página / clics < 50% (sólo si el píxel mide visitas) | Revisar |
+| M8 | Casi nadie hace clic | Ventas, contactos, tráfico o app; ≥ 3.000 impresiones y CTR del enlace < 0,4% | Revisar |
+
+Alertas de cuenta:
+- **A1 Sin medición**: las campañas de ventas y contactos gastaron y no registran ningún resultado (probable falta de píxel). En ese caso M1, M2 y M3 no se evalúan para ellas.
+- **A2 Estado de la cuenta**: pago pendiente, pago fallido (período de gracia) o cuenta en revisión.
+
+Los valores fijos (frecuencia 3, CTR 0,4%, 50% de visitas, 50 clics) son reglas prácticas, no datos de mercado verificados. Se ajustan con el registro de calibración (§7).
+
 ## 5. Requisitos para producción (no son del cliente, son del operador de la app)
 
 1. **Proyecto en Google Cloud** con OAuth Client (tipo "Aplicación web"), redirect URI `https://<dominio>/api/auth/callback/google` (y `http://localhost:3000/api/auth/callback/google` en desarrollo).
@@ -112,3 +156,17 @@ Alerta a nivel cuenta:
 3. Panel: resumen (gasto 30 días, resultados, alertas, "podrías ahorrar"), luego campañas ordenadas por severidad de alerta.
 4. Cada alerta: título simple, explicación de una línea, botón "Pausar" con confirmación que repite el monto en juego.
 5. Errores traducidos: token no aprobado, cuenta sin permisos, sesión expirada → mensaje claro y qué hacer.
+
+## 7. Calibración y análisis en sombra
+
+Ambos sólo escriben logs en Sentry (proyecto `ad-guard-microapp`); el usuario no ve nada distinto.
+
+**Calibración** (`lib/calibration.js`, flujo `calibration`): cada vez que se cargan las campañas se registra, por campaña, sus métricas (CTR, frecuencia, visitas/clics, costo por resultado, comparación con la referencia, ROAS) y qué alertas salieron. Con varias cuentas reales se mira la distribución y se ajustan los umbrales; por ejemplo, alertar sólo al 10% peor. Como cada recarga vuelve a registrar, al analizar hay que quedarse con un registro por campaña y día.
+
+**Análisis en sombra** (`lib/shadow.js`, flujo `shadow`): después de responder, se consulta el gasto y los resultados por grupo de anuncios, anuncio y palabra clave (Google) o por conjunto y anuncio (Meta), y se registra por campaña:
+- `partsWithSpend`: cuántas partes gastaron (¿la mayoría tiene una sola?);
+- `wastedShare`: qué parte del gasto se fue en partes sin resultados;
+- `top1WastedShare` / `top2WastedShare`: cuánto de ese gasto se concentra en la peor parte o las dos peores;
+- `campaignFlaggedPause`: si la campaña entera ya tenía alerta de pausar.
+
+La pregunta a responder tras 2 o 3 semanas con usuarios piloto: ¿en cuántas campañas que se ven "aceptables" el dinero se pierde en 1 o 2 partes? Si es frecuente, se agrega "Ver dónde se pierde el dinero" con pausa por parte; si casi todos tienen campañas de una sola parte, no vale la pena.

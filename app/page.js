@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn, signOut, useSession } from 'next-auth/react';
 import { Bell, ChevronRight, LogOut, Pause, RefreshCw, Search, ShieldCheck, Sparkles, TriangleAlert, X } from 'lucide-react';
 import { evaluateAccount } from '@/lib/alerts';
+import { evaluateMetaAccount } from '@/lib/alerts-meta';
 import { DEMO_ACCOUNT, DEMO_CAMPAIGNS } from '@/lib/demo-data';
 import { Dashboard } from './components/dashboard';
 import { GoogleLogo, MetaLogo } from './components/brand-icons';
@@ -49,6 +50,7 @@ const SOURCES = {
     api: '/api/google-ads',
     storageKey: 'adguard.customerId',
     params: (a) => ({ customerId: a.id, ...(a.loginCustomerId && { loginCustomerId: a.loginCustomerId }) }),
+    evaluate: (data) => evaluateAccount(data.campaigns, { currency: data.account.currency }),
     formatId: (id) => id.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3'),
     searching: 'Buscando tus cuentas de Google Ads…',
     accountsLabel: 'cuentas de Google Ads con anuncios',
@@ -62,6 +64,7 @@ const SOURCES = {
     api: '/api/meta-ads',
     storageKey: 'adguard.metaAccountId',
     params: (a) => ({ accountId: a.id }),
+    evaluate: (data) => evaluateMetaAccount(data.campaigns, { currency: data.account.currency, context: data.context }),
     formatId: (id) => `ID ${id}`,
     searching: 'Buscando tus cuentas publicitarias de Meta…',
     accountsLabel: 'cuentas publicitarias de Meta',
@@ -295,12 +298,8 @@ function LiveView({ source, account, onChangeAccount }) {
     load();
   };
 
-  const campaigns = data?.campaigns;
-  const currency = data?.account.currency;
-  const evaluation = useMemo(
-    () => campaigns && evaluateAccount(campaigns, { currency, platform: source.label }),
-    [campaigns, currency, source]
-  );
+  // Se reevalúa en el navegador para que las alertas se actualicen al pausar o activar.
+  const evaluation = useMemo(() => data && source.evaluate(data), [data, source]);
 
   const onSetStatus = async (campaign, status) => {
     const res = await fetchJson(`${source.api}/campaigns/${campaign.id}/status`, {

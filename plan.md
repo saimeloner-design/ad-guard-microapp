@@ -26,9 +26,4 @@ Variables que ya están en `.env.local`: `GOOGLE_ADS_CLIENT_ID`, `GOOGLE_ADS_CLI
 - [x] Rutas de datos de Meta equivalentes a las de Google (`/api/meta-ads/accounts`, `/api/meta-ads/campaigns`, `/api/meta-ads/campaigns/[campaignId]/status`).
 - [x] Que el panel use los datos de Meta cuando `session.hasMetaAds` es verdadero.
 
-## Cómo se adaptan los datos de Meta al motor de alertas
-
-- **Clics**: clics en el enlace (`inline_link_clicks`), no los clics totales (que incluyen me gusta y comentarios).
-- **Resultados**: suma de compras, clientes potenciales, conversaciones de mensajería iniciadas, contactos y registros (`RESULT_ACTIONS` en `lib/meta-ads.js`). De cada grupo se toma un solo nombre de acción para no contar dos veces la misma conversión.
-- **Tipo de campaña**: el objetivo de Meta (Ventas, Clientes potenciales, etc.). Para la regla de CTR usa el mínimo por defecto (0,1%).
-- **Estado**: el de la campaña (`ACTIVE`/`PAUSED`); no mira si sus conjuntos de anuncios están pausados.
+Los criterios de alerta de Meta están en `docs/SPEC.md` §4b; la calibración y el análisis en sombra, en §7.

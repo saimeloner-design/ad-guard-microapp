@@ -1,6 +1,8 @@
 import { evaluateAccount } from '@/lib/alerts';
-import { cleanCustomerId, cleanOptionalCustomerId, errorResponse, getAccessToken, getCampaigns } from '@/lib/google-ads';
+import { logCalibration } from '@/lib/calibration';
+import { cleanCustomerId, cleanOptionalCustomerId, errorResponse, getAccessToken, getBreakdown, getCampaigns } from '@/lib/google-ads';
 import { flushLogsAfterResponse } from '@/lib/log';
+import { logWasteConcentration, runInShadow } from '@/lib/shadow';
 
 export async function GET(request) {
   flushLogsAfterResponse();
@@ -11,6 +13,22 @@ export async function GET(request) {
     const accessToken = await getAccessToken(request);
     const { account, campaigns } = await getCampaigns(accessToken, customerId, loginCustomerId);
     const result = evaluateAccount(campaigns, { currency: account.currency });
+
+    logCalibration('google', account, result);
+    runInShadow('google', async () => {
+      const levels = await getBreakdown(accessToken, customerId, loginCustomerId);
+      for (const [level, children] of Object.entries(levels)) {
+        logWasteConcentration({
+          platform: 'google',
+          level,
+          accountId: customerId,
+          evaluation: result,
+          children,
+          isMeasured: () => result.summary.measuring,
+        });
+      }
+    });
+
     return Response.json({ account, ...result });
   } catch (error) {
     return errorResponse(error);

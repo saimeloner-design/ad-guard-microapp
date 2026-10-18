@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { formatMoney, SEVERITY } from '@/lib/alerts';
-import { Bell, Pause, PiggyBank, Play, Search, Sprout, Target, Wallet } from 'lucide-react';
+import { Bell, Clock, Pause, PiggyBank, Play, Search, Sprout, Target, Users, Wallet } from 'lucide-react';
 import { Alert, Button, StateCard, Toast } from './ui';
 
 const CHANNEL_LABELS = {
@@ -21,6 +21,7 @@ const CHANNEL_LABELS = {
   OUTCOME_TRAFFIC: 'Tráfico',
   OUTCOME_AWARENESS: 'Reconocimiento',
   OUTCOME_APP_PROMOTION: 'Promoción de app',
+  MESSAGES: 'Mensajes',
 };
 
 const PLATFORMS = {
@@ -58,15 +59,19 @@ function AlertBox({ alert }) {
   );
 }
 
-function StatusPill({ paused }) {
+const STATUS_PILLS = {
+  active: { label: 'Activa', className: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300', dot: 'bg-emerald-500' },
+  // Meta: la campaña está activa pero ninguno de sus conjuntos de anuncios está publicando.
+  idle: { label: 'Activa, sin publicar', className: 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300', dot: 'bg-amber-500' },
+  paused: { label: 'Pausada', className: 'bg-surface-3 text-muted', dot: 'bg-faint' },
+};
+
+function StatusPill({ status }) {
+  const pill = STATUS_PILLS[status];
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded-full ${
-        paused ? 'bg-surface-3 text-muted' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300'
-      }`}
-    >
-      <span className={`size-1.5 rounded-full ${paused ? 'bg-faint' : 'bg-emerald-500'}`} />
-      {paused ? 'Pausada' : 'Activa'}
+    <span className={`inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-0.5 rounded-full ${pill.className}`}>
+      <span className={`size-1.5 rounded-full ${pill.dot}`} />
+      {pill.label}
     </span>
   );
 }
@@ -84,6 +89,12 @@ function CampaignCard({ campaign: c, currency, platform, onToggle, busy }) {
   const isPaused = c.status === 'paused';
   const shouldPause = c.alerts.some((a) => a.severity === SEVERITY.PAUSE);
   const money = (v) => formatMoney(v, currency);
+  // Meta trae sus propios KPIs según el objetivo de la campaña.
+  const kpis = c.kpis ?? [
+    { label: 'Gasto', value: money(c.cost) },
+    { label: 'Clics', value: c.clicks.toLocaleString('es-CL') },
+    { label: 'Resultados', value: Math.round(c.conversions * 10) / 10 },
+  ];
 
   return (
     <div
@@ -101,7 +112,7 @@ function CampaignCard({ campaign: c, currency, platform, onToggle, busy }) {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-1.5">
-              <StatusPill paused={isPaused} />
+              <StatusPill status={isPaused ? 'paused' : c.delivering === false ? 'idle' : 'active'} />
               <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
                 {CHANNEL_LABELS[c.channel] || PLATFORMS[platform].label}
               </span>
@@ -128,14 +139,17 @@ function CampaignCard({ campaign: c, currency, platform, onToggle, busy }) {
 
         {!isPaused && c.learning && (
           <Alert tone="neutral" icon={Sprout}>
-            Aprendiendo: aún no hay suficientes datos para evaluarla.
+            {c.learningMessage ?? 'Aprendiendo: aún no hay suficientes datos para evaluarla.'}
           </Alert>
         )}
 
-        <div className="grid grid-cols-3 gap-2 bg-surface-2 rounded-xl px-3 py-2.5">
-          <Metric label="Gasto" value={money(c.cost)} />
-          <Metric label="Clics" value={c.clicks.toLocaleString('es-CL')} />
-          <Metric label="Resultados" value={Math.round(c.conversions * 10) / 10} />
+        <div className="bg-surface-2 rounded-xl px-3 py-2.5">
+          <div className="grid grid-cols-3 gap-2">
+            {kpis.map((k) => (
+              <Metric key={k.label} label={k.label} value={k.value} />
+            ))}
+          </div>
+          {c.detail && <p className="text-xs text-muted mt-2 pt-2 border-t border-line">{c.detail}</p>}
         </div>
       </div>
     </div>
@@ -244,7 +258,12 @@ export function Dashboard({ account, evaluation, onSetStatus, onChangeAccount, p
 
       <div className="grid grid-cols-2 gap-3 mb-5">
         <StatCard icon={Wallet} label="Gasto" value={money(summary.totalCost)} />
-        <StatCard icon={Target} label="Resultados (ventas/contactos)" value={summary.measuring ? Math.round(summary.totalConversions) : '—'} />
+        {platform === 'meta' ? (
+          // En Meta cada campaña busca un resultado distinto: sumarlos no dice nada.
+          <StatCard icon={Users} label="Personas alcanzadas" value={summary.reach ? summary.reach.toLocaleString('es-CL') : '—'} />
+        ) : (
+          <StatCard icon={Target} label="Resultados (ventas/contactos)" value={summary.measuring ? Math.round(summary.totalConversions) : '—'} />
+        )}
         <StatCard
           icon={Bell}
           label="Campañas con alertas"
@@ -273,6 +292,12 @@ export function Dashboard({ account, evaluation, onSetStatus, onChangeAccount, p
       </div>
 
       <h2 className="text-sm font-semibold text-fg mb-3">Campañas</h2>
+      {platform === 'meta' && (
+        <p className="flex items-center gap-1.5 text-xs text-muted -mt-1.5 mb-3">
+          <Clock className="size-3.5 shrink-0" aria-hidden="true" />
+          Meta puede tardar hasta 3 días en registrar algunas ventas y contactos.
+        </p>
+      )}
       <div className="space-y-3">
         {campaigns.map((c) => (
           <CampaignCard key={c.id} campaign={c} currency={account.currency} platform={platform} onToggle={setPending} busy={busyId === c.id} />
