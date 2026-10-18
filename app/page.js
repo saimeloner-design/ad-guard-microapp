@@ -6,7 +6,7 @@ import { signIn, signOut, useSession } from 'next-auth/react';
 import { Bell, ChevronRight, LogOut, Pause, RefreshCw, Search, ShieldCheck, Sparkles, TriangleAlert, X } from 'lucide-react';
 import { evaluateAccount } from '@/lib/alerts';
 import { evaluateMetaAccount } from '@/lib/alerts-meta';
-import { DEMO_ACCOUNT, DEMO_CAMPAIGNS } from '@/lib/demo-data';
+import { DEMO_ACCOUNT, DEMO_CAMPAIGNS, DEMO_CONTEXT } from '@/lib/demo-data';
 import { Dashboard } from './components/dashboard';
 import { GoogleLogo, MetaLogo } from './components/brand-icons';
 import { ThemeToggle } from './components/theme';
@@ -37,8 +37,6 @@ async function fetchJson(url, options) {
   }
   return data;
 }
-
-const connectGoogle = () => signIn('google');
 
 // Lo que cambia entre Google Ads y Meta Ads; el resto del flujo (cuentas → panel) es el mismo.
 const SOURCES = {
@@ -187,7 +185,7 @@ function Landing({ onDemo, notice }) {
           onClick={onDemo}
           className="mt-4 text-sm font-medium text-muted hover:text-fg underline underline-offset-4 decoration-line-strong cursor-pointer"
         >
-          Ver demo con datos de ejemplo
+          Ver demo con campañas de Meta de ejemplo
         </button>
       </div>
 
@@ -212,7 +210,10 @@ function Landing({ onDemo, notice }) {
 
 function DemoView() {
   const [campaigns, setCampaigns] = useState(DEMO_CAMPAIGNS);
-  const evaluation = useMemo(() => evaluateAccount(campaigns, { currency: DEMO_ACCOUNT.currency }), [campaigns]);
+  const evaluation = useMemo(
+    () => evaluateMetaAccount(campaigns, { currency: DEMO_ACCOUNT.currency, context: DEMO_CONTEXT }),
+    [campaigns]
+  );
 
   const onSetStatus = async (campaign, status) => {
     setCampaigns((prev) => prev.map((c) => (c.id === campaign.id ? { ...c, status: status === 'ENABLED' ? 'active' : 'paused' } : c)));
@@ -222,17 +223,17 @@ function DemoView() {
     <>
       <Alert
         tone="info"
-        title="Estás viendo datos de ejemplo"
+        title="Estás viendo campañas de Meta de ejemplo"
         className="mb-6"
         action={
-          <Button size="sm" variant="secondary" icon={GoogleLogo} onClick={connectGoogle}>
-            Conectar Google Ads
+          <Button size="sm" variant="secondary" icon={MetaLogo} onClick={() => signIn('facebook')}>
+            Conectar Meta
           </Button>
         }
       >
-        Pausar o activar aquí no cambia nada real. Conecta tu cuenta para revisar tus propias campañas.
+        Pausar o activar aquí no cambia nada real. Conecta tu cuenta de Meta para revisar tus propias campañas de Facebook e Instagram.
       </Alert>
-      <Dashboard account={DEMO_ACCOUNT} evaluation={evaluation} onSetStatus={onSetStatus} />
+      <Dashboard account={DEMO_ACCOUNT} evaluation={evaluation} onSetStatus={onSetStatus} platform="meta" />
     </>
   );
 }
