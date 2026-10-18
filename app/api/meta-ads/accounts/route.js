@@ -1,11 +1,15 @@
 import { flushLogsAfterResponse } from '@/lib/log';
-import { getMetaAccessToken, listAdAccounts, metaErrorResponse } from '@/lib/meta-ads';
+import { getMetaAccessToken, listAdAccounts, logAccountOwners, metaErrorResponse } from '@/lib/meta-ads';
+import { runInShadow } from '@/lib/shadow';
 
 export async function GET(request) {
   flushLogsAfterResponse();
   try {
     const accessToken = await getMetaAccessToken(request);
-    return Response.json(await listAdAccounts(accessToken));
+    const { allAccountIds, ...result } = await listAdAccounts(accessToken);
+    // Diagnóstico temporal: si cada cuenta es personal o de un negocio.
+    runInShadow('meta-owners', () => logAccountOwners(accessToken, allAccountIds));
+    return Response.json(result);
   } catch (error) {
     return metaErrorResponse(error);
   }
