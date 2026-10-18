@@ -1,4 +1,4 @@
-# AdGuard Micro — Especificación
+# AdsGuard — Especificación
 
 ## 0. Prompt original (referencia)
 
