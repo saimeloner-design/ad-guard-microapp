@@ -1,7 +1,7 @@
 import { evaluateMetaAccount } from '@/lib/alerts-meta';
 import { logCalibration } from '@/lib/calibration';
 import { flushLogsAfterResponse } from '@/lib/log';
-import { cleanAdAccountId, getMetaAccessToken, getMetaBreakdown, getMetaCampaigns, metaErrorResponse } from '@/lib/meta-ads';
+import { cleanAdAccountId, getMetaAccessToken, getMetaBreakdown, getMetaCampaigns, logCampaignPages, metaErrorResponse } from '@/lib/meta-ads';
 import { logWasteConcentration, runInShadow } from '@/lib/shadow';
 
 export async function GET(request) {
@@ -20,6 +20,9 @@ export async function GET(request) {
         logWasteConcentration({ platform: 'meta', level, accountId, evaluation: result, children, isMeasured: (c) => c.measured });
       }
     });
+
+    // Diagnóstico temporal: de qué página es cada campaña (cuentas con varias páginas).
+    runInShadow('meta-pages', () => logCampaignPages(accessToken, accountId, result.campaigns));
 
     // `context` vuelve al navegador para reevaluar las alertas al pausar o activar.
     return Response.json({ account, context, ...result });
