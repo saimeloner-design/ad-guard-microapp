@@ -283,7 +283,9 @@ function AccountPicker({ source, accounts, managers, onSelect }) {
 
 function LiveView({ source, account, onChangeAccount }) {
   const params = source.params(account);
-  const query = new URLSearchParams(params).toString();
+  // Uso interno para pruebas: ?inactivas=1 muestra también las campañas antiguas sin gasto (Meta).
+  const showInactive = useSearchParams().get('inactivas') === '1';
+  const query = new URLSearchParams({ ...params, ...(showInactive && { inactivas: '1' }) }).toString();
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
 
@@ -323,6 +325,7 @@ function LiveView({ source, account, onChangeAccount }) {
       onSetStatus={onSetStatus}
       onChangeAccount={onChangeAccount}
       platform={source.id}
+      hiddenCount={data.hiddenCount}
     />
   );
 }

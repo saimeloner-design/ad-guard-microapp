@@ -119,6 +119,11 @@ En orden, se usa la primera que exista (mínimo 5 resultados):
 2. La misma campaña en los 30 días anteriores.
 3. Ninguna: no se juzga si es caro; sólo aplican las reglas que no comparan.
 
+### Campañas que se muestran
+Las activas, y las pausadas que gastaron algo en los últimos 90 días. Las pausadas sin gasto en ese período (promociones antiguas que se acumulan en la cuenta, a veces de varias páginas) se ocultan y sólo se informa cuántas son. Meta da acceso a todas las cuentas publicitarias del usuario aunque en el login elija un negocio, así que sin este filtro aparecían campañas viejas de otras páginas.
+
+Uso interno para pruebas: agregar `?inactivas=1` a la URL de la app (por ejemplo `https://ad-guard-microapp.vercel.app/?inactivas=1`) muestra también las ocultas.
+
 ### Datos mínimos
 No se evalúa (se marca "Aprendiendo") si algún conjunto que publica está en fase de aprendizaje de Meta, o si tiene < 1.000 impresiones y < 30 clics en el enlace. Una campaña activa sin conjuntos publicando se muestra como "Activa, sin publicar" y sólo recibe M6.
 

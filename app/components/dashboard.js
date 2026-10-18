@@ -204,11 +204,24 @@ function ConfirmDialog({ campaign, currency, onConfirm, onCancel }) {
   );
 }
 
+function HiddenNote({ count, className = '' }) {
+  if (!count) return null;
+  return (
+    // span y no p: también va dentro del texto de StateCard, que ya es un <p>.
+    <span className={`block text-xs text-muted ${className}`}>
+      {count === 1
+        ? 'Hay 1 campaña antigua sin gasto en los últimos 90 días que no mostramos.'
+        : `Hay ${count} campañas antiguas sin gasto en los últimos 90 días que no mostramos.`}
+    </span>
+  );
+}
+
 /**
  * Panel con resumen, alertas de cuenta y campañas.
  * `onSetStatus(campaign, 'PAUSED' | 'ENABLED')` debe devolver una promesa. `platform`: 'google' | 'meta'.
+ * `hiddenCount`: campañas pausadas sin gasto en 90 días que no se muestran (Meta).
  */
-export function Dashboard({ account, evaluation, onSetStatus, onChangeAccount, platform = 'google' }) {
+export function Dashboard({ account, evaluation, onSetStatus, onChangeAccount, platform = 'google', hiddenCount = 0 }) {
   const [pending, setPending] = useState(null);
   const [busyId, setBusyId] = useState(null);
   const [toast, setToast] = useState(null);
@@ -237,7 +250,7 @@ export function Dashboard({ account, evaluation, onSetStatus, onChangeAccount, p
     return (
       <StateCard
         icon={Search}
-        title="Esta cuenta todavía no tiene campañas"
+        title={hiddenCount ? 'No tienes campañas con actividad reciente' : 'Esta cuenta todavía no tiene campañas'}
         action={
           onChangeAccount && (
             <Button variant="secondary" onClick={onChangeAccount}>
@@ -246,8 +259,10 @@ export function Dashboard({ account, evaluation, onSetStatus, onChangeAccount, p
           )
         }
       >
-        Cuando crees una campaña en {PLATFORMS[platform].ads} aparecerá aquí y empezaremos a vigilar su gasto.
+        Cuando crees {hiddenCount ? 'o reactives ' : ''}una campaña en {PLATFORMS[platform].ads} aparecerá aquí y empezaremos a
+        vigilar su gasto.
         {onChangeAccount && ' Si tus anuncios están en otra de tus cuentas, cámbiate a ella.'}
+        <HiddenNote count={hiddenCount} className="mt-3" />
       </StateCard>
     );
   }
@@ -303,6 +318,7 @@ export function Dashboard({ account, evaluation, onSetStatus, onChangeAccount, p
           <CampaignCard key={c.id} campaign={c} currency={account.currency} platform={platform} onToggle={setPending} busy={busyId === c.id} />
         ))}
       </div>
+      <HiddenNote count={hiddenCount} className="mt-4 text-center" />
 
       {pending && <ConfirmDialog campaign={pending} currency={account.currency} onConfirm={confirm} onCancel={cancel} />}
       <Toast toast={toast} onDismiss={dismissToast} />

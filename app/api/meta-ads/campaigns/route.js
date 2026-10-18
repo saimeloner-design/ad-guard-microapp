@@ -1,15 +1,18 @@
 import { evaluateMetaAccount } from '@/lib/alerts-meta';
 import { logCalibration } from '@/lib/calibration';
 import { flushLogsAfterResponse } from '@/lib/log';
-import { cleanAdAccountId, getMetaAccessToken, getMetaBreakdown, getMetaCampaigns, logCampaignPages, metaErrorResponse } from '@/lib/meta-ads';
+import { cleanAdAccountId, getMetaAccessToken, getMetaBreakdown, getMetaCampaigns, metaErrorResponse } from '@/lib/meta-ads';
 import { logWasteConcentration, runInShadow } from '@/lib/shadow';
 
 export async function GET(request) {
   flushLogsAfterResponse();
   try {
-    const accountId = cleanAdAccountId(request.nextUrl.searchParams.get('accountId'));
+    const params = request.nextUrl.searchParams;
+    const accountId = cleanAdAccountId(params.get('accountId'));
+    // Uso interno para pruebas: ?inactivas=1 en la app muestra también las campañas antiguas sin gasto.
+    const includeInactive = params.get('inactivas') === '1';
     const accessToken = await getMetaAccessToken(request);
-    const { account, campaigns, context } = await getMetaCampaigns(accessToken, accountId);
+    const { account, campaigns, hiddenCount, context } = await getMetaCampaigns(accessToken, accountId, { includeInactive });
     const result = evaluateMetaAccount(campaigns, { currency: account.currency, context });
 
     logCalibration('meta', account, result);
@@ -21,11 +24,8 @@ export async function GET(request) {
       }
     });
 
-    // Diagnóstico temporal: de qué página es cada campaña (cuentas con varias páginas).
-    runInShadow('meta-pages', () => logCampaignPages(accessToken, accountId, result.campaigns));
-
     // `context` vuelve al navegador para reevaluar las alertas al pausar o activar.
-    return Response.json({ account, context, ...result });
+    return Response.json({ account, context, hiddenCount, ...result });
   } catch (error) {
     return metaErrorResponse(error);
   }
