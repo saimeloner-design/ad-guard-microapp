@@ -70,8 +70,9 @@ const SOURCES = {
   },
 };
 
+// Por ahora sólo Meta; para volver a ofrecer Google basta con agregarlo aquí:
+// { id: 'google', label: 'Continuar con Google', Logo: GoogleLogo },
 const PROVIDERS = [
-  { id: 'google', label: 'Continuar con Google', Logo: GoogleLogo },
   { id: 'facebook', label: 'Continuar con Meta', Logo: MetaLogo },
 ];
 
@@ -93,7 +94,7 @@ function LoginButtons() {
     signIn(id);
   };
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className={`grid gap-3 ${PROVIDERS.length > 1 ? 'sm:grid-cols-2' : ''}`}>
       {PROVIDERS.map(({ id, label, Logo }) => (
         <Button
           key={id}
@@ -170,13 +171,13 @@ function Landing({ onDemo, notice }) {
       {notice}
       <span className="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-700 bg-indigo-50 border border-indigo-100 dark:text-indigo-300 dark:bg-indigo-500/10 dark:border-indigo-500/20 px-3 py-1 rounded-full">
         <Sparkles className="size-3.5" aria-hidden="true" />
-        Para negocios que anuncian en Google y Meta
+        Para negocios que anuncian en Facebook e Instagram
       </span>
       <h2 className="mt-5 text-3xl sm:text-4xl font-bold tracking-tight text-fg text-balance">
         Deja de pagar por anuncios que no te traen clientes
       </h2>
       <p className="mt-4 text-base text-muted leading-relaxed text-pretty max-w-md mx-auto">
-        Conecta tu cuenta de anuncios y te mostramos, en lenguaje simple, dónde se está yendo tu dinero.
+        Conecta tu cuenta de Meta y te mostramos, en lenguaje simple, dónde se está yendo tu dinero.
       </p>
 
       <div className="mt-8 max-w-md mx-auto">
