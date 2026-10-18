@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn, signOut, useSession } from 'next-auth/react';
-import { Bell, ChevronRight, LogOut, Pause, RefreshCw, Search, ShieldCheck, Sparkles, TriangleAlert, X } from 'lucide-react';
+import { Bell, ChevronRight, LogOut, Pause, RefreshCw, Search, ShieldCheck, Sparkles, TriangleAlert, Wallet, X } from 'lucide-react';
 import { evaluateAccount } from '@/lib/alerts';
 import { evaluateMetaAccount } from '@/lib/alerts-meta';
 import { DEMO_ACCOUNT, DEMO_CAMPAIGNS, DEMO_CONTEXT } from '@/lib/demo-data';
@@ -119,7 +119,7 @@ function Header({ subtitle, right }) {
       <div className="flex justify-between items-center gap-3">
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="size-9 shrink-0 grid place-items-center rounded-xl bg-linear-to-br from-indigo-500 to-emerald-500 text-white shadow-sm shadow-indigo-500/30">
-            <ShieldCheck className="size-5" aria-hidden="true" />
+            <Wallet className="size-5" aria-hidden="true" />
           </div>
           <div className="min-w-0">
             <h1 className="text-[15px] font-semibold text-fg leading-tight">AdsGuard</h1>
