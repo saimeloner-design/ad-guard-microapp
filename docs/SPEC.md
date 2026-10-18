@@ -125,7 +125,7 @@ No se evalúa (se marca "Aprendiendo") si algún conjunto que publica está en f
 ### Reglas
 | # | Regla | Condición | Severidad |
 |---|---|---|---|
-| M1 | Gasta sin resultados | Objetivo con resultado concreto (ventas, contactos, mensajes, app), 0 resultados y gasto ≥ 2× el costo por resultado de referencia **o** ≥ 50 clics en el enlace | **Pausar** |
+| M1 | Gasta sin resultados | Objetivo con resultado concreto (ventas, contactos, mensajes, app), 0 resultados y gasto ≥ 2× el costo por resultado de referencia **o** ≥ 50 clics en el enlace **o**, sólo en mensajes (casi no generan clics en el enlace), ≥ 5.000 impresiones | **Pausar** |
 | M2 | Resultado caro | Costo por resultado ≥ 2,5× otras campañas con el mismo objetivo, o ≥ 2× el mes anterior de la misma campaña | Revisar |
 | M3 | Vende menos de lo que gasta | Ventas con valor medido, ≥ 5 compras y valor/gasto < 1 | Revisar |
 | M4 | Anuncio desgastado | Frecuencia de 7 días ≥ 3 y CTR de 7 días ≥ 30% menor que el de los 23 días anteriores (≥ 1.000 impresiones en cada período). No aplica a reconocimiento | Revisar |
@@ -138,7 +138,7 @@ Alertas de cuenta:
 - **A1 Sin medición**: las campañas de ventas y contactos gastaron y no registran ningún resultado (probable falta de píxel). En ese caso M1, M2 y M3 no se evalúan para ellas.
 - **A2 Estado de la cuenta**: pago pendiente, pago fallido (período de gracia) o cuenta en revisión.
 
-Los valores fijos (frecuencia 3, CTR 0,4%, 50% de visitas, 50 clics) son reglas prácticas, no datos de mercado verificados. Se ajustan con el registro de calibración (§7).
+Los valores fijos (frecuencia 3, CTR 0,4%, 50% de visitas, 50 clics, 5.000 impresiones en mensajes) son reglas prácticas, no datos de mercado verificados. Se ajustan con el registro de calibración (§7).
 
 ## 5. Requisitos para producción (no son del cliente, son del operador de la app)
 
