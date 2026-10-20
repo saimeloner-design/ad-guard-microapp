@@ -98,7 +98,7 @@ function Funnel({ steps }) {
             />
           )}
           <span
-            className={`relative size-6 grid place-items-center rounded-full ring-2 ring-surface ${
+            className={`relative z-10 size-6 grid place-items-center rounded-full ring-2 ring-surface ${
               s.bad ? 'bg-red-600 text-white dark:bg-red-500' : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400'
             }`}
           >
