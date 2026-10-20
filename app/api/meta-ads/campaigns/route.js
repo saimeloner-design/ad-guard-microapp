@@ -5,6 +5,7 @@ import {
   cleanAdAccountId,
   getMetaAccessToken,
   getMetaBreakdownRows,
+  getMetaCampaignConfigs,
   getMetaCampaigns,
   metaErrorResponse,
   normalizeBreakdown,
@@ -33,7 +34,15 @@ export async function GET(request) {
       const adsets = Map.groupBy(breakdown.adset, (p) => p.campaignId);
       for (const c of campaigns) c.parts = { ad: ads.get(c.id) ?? [], adset: adsets.get(c.id) ?? [] };
     }
-    const result = evaluateMetaAccount(campaigns, { currency: account.currency, context });
+    let result = evaluateMetaAccount(campaigns, { currency: account.currency, context });
+
+    // "Lo que te funcionó antes": la configuración sólo se lee para las campañas que se comparan.
+    const compared = result.campaigns.filter((c) => c.diagnosis?.past);
+    if (compared.length) {
+      const ids = [...new Set(compared.flatMap((c) => [c.id, c.diagnosis.past.winnerId]))];
+      context.configs = await getMetaCampaignConfigs(accessToken, ids, account.currency);
+      result = evaluateMetaAccount(campaigns, { currency: account.currency, context });
+    }
 
     logCalibration('meta', account, result);
     if (breakdown) {

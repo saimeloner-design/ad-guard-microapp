@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { formatMoney, SEVERITY } from '@/lib/alerts';
-import { Bell, Check, ChevronDown, Clock, Lightbulb, Pause, PiggyBank, Play, Scissors, Search, Sprout, Target, Users, Wallet, X } from 'lucide-react';
+import { Bell, Check, ChevronDown, Clock, History, Lightbulb, Pause, PiggyBank, Play, Scissors, Search, Sprout, Target, Trophy, Users, Wallet, X } from 'lucide-react';
 import { Alert, Button, StateCard, Toast } from './ui';
 
 const CHANNEL_LABELS = {
@@ -120,6 +120,7 @@ function Funnel({ steps }) {
 const TIP_TONES = {
   fix: { box: 'bg-indigo-50 dark:bg-indigo-500/10', icon: 'text-indigo-600 dark:text-indigo-300', eyebrow: 'text-indigo-600 dark:text-indigo-300' },
   cut: { box: 'bg-surface-3', icon: 'text-fg-2', eyebrow: 'text-muted' },
+  past: { box: 'bg-emerald-50 dark:bg-emerald-500/10', icon: 'text-emerald-600 dark:text-emerald-400', eyebrow: 'text-emerald-700 dark:text-emerald-400' },
 };
 
 /** Sugerencia plegable: se ve el titular y la explicación se abre al tocarlo. */
@@ -135,8 +136,39 @@ function Tip({ tone, icon: TipIcon, eyebrow, title, children }) {
         </span>
         <ChevronDown className="size-4 mt-1 text-muted transition-transform motion-reduce:transition-none group-open:rotate-180" aria-hidden="true" />
       </summary>
-      <div className="px-3 pb-3 pl-[42px] text-[13px] text-fg-2 leading-relaxed space-y-2.5">{children}</div>
+      <div className="px-3 pb-3 sm:pl-[42px] text-[13px] text-fg-2 leading-relaxed space-y-2.5">{children}</div>
     </details>
+  );
+}
+
+/** Campaña que funcionó contra la actual: lo distinto en rojo, lo igual en gris. */
+function Comparison({ rows }) {
+  return (
+    <div className="rounded-lg border border-line bg-surface overflow-x-auto">
+      <table className="w-full table-fixed border-collapse text-[13px]">
+        <thead>
+          <tr className="bg-surface-2 text-[11px] font-semibold uppercase tracking-wider text-muted text-left">
+            <th scope="col" className="w-[30%] px-2.5 py-1.5" />
+            <th scope="col" className="px-2.5 py-1.5">La que funcionó</th>
+            <th scope="col" className="px-2.5 py-1.5">Esta campaña</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.key} className="border-t border-line align-top">
+              <th scope="row" className="px-2.5 py-2 text-left font-normal text-muted break-words">
+                {r.label}
+              </th>
+              <td className="px-2.5 py-2 font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums break-words">{r.then}</td>
+              <td className={`px-2.5 py-2 tabular-nums break-words ${r.diff ? 'font-semibold text-red-600 dark:text-red-400' : 'text-fg-2'}`}>
+                {r.now}
+                {r.diff && <span className="sr-only"> (distinto)</span>}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -151,6 +183,14 @@ function Diagnosis({ diagnosis: d }) {
             <p>{d.fix.detail}</p>
           </Tip>
         </>
+      )}
+      {d.past && (
+        <Tip tone="past" icon={History} eyebrow="Lo que te funcionó antes" title={d.past.title}>
+          <p>{d.past.intro}</p>
+          {d.past.rows.length > 0 && <Comparison rows={d.past.rows} />}
+          {d.past.suggestion && <p className="font-semibold text-fg">{d.past.suggestion}</p>}
+          <p>{d.past.howTo}</p>
+        </Tip>
       )}
       {d.cut && (
         <Tip tone="cut" icon={Scissors} eyebrow="Pausa solo esta parte" title={d.cut.title}>
@@ -293,6 +333,34 @@ function ConfirmDialog({ campaign, currency, onConfirm, onCancel }) {
   );
 }
 
+/** "Tus campañas que mejor funcionaron": la mejor de cada objetivo en los últimos 12 meses (Meta). */
+function BestCampaigns({ best }) {
+  return (
+    <section aria-labelledby="best-title" className="bg-surface border border-line rounded-2xl shadow-xs overflow-hidden mb-5">
+      <div className="px-4 pt-3.5 pb-2.5">
+        <h2 id="best-title" className="flex items-center gap-2 text-sm font-semibold text-fg">
+          <Trophy className="size-4 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+          Tus campañas que mejor funcionaron
+        </h2>
+        <p className="text-xs text-muted mt-0.5">La mejor de cada objetivo en los últimos 12 meses, sin alertas y con al menos 10 resultados.</p>
+      </div>
+      <ul>
+        {best.map((b) => (
+          <li key={b.id} className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5 px-4 py-2.5 border-t border-line">
+            <span className="col-span-2 text-[11px] font-semibold uppercase tracking-wider text-muted">{b.objective}</span>
+            <span className="min-w-0 break-words text-sm font-semibold text-fg">{b.name}</span>
+            <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums text-right whitespace-nowrap">
+              {b.costPerResult}
+            </span>
+            <span className="text-xs text-muted">{b.detail}</span>
+            <span className="text-xs text-muted text-right whitespace-nowrap">{b.unit}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 function HiddenNote({ count, className = '' }) {
   if (!count) return null;
   return (
@@ -394,6 +462,8 @@ export function Dashboard({ account, evaluation, onSetStatus, onChangeAccount, p
           </Alert>
         )}
       </div>
+
+      {evaluation.best?.length > 0 && <BestCampaigns best={evaluation.best} />}
 
       <h2 className="text-sm font-semibold text-fg mb-3">Campañas</h2>
       {platform === 'meta' && (

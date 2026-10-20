@@ -176,6 +176,29 @@ El detalle por conjunto y anuncio (`getMetaBreakdownRows`) se pide en paralelo c
 
 La calibración registra `funnelBreak`, `cutLevel` y `cutParts` por campaña para ajustar estos criterios.
 
+## 4d. Lo que te funcionó antes (Meta)
+
+Código: `lib/winners-meta.js` (elegir la ganadora y comparar configuraciones), `findPast` en `lib/diagnosis-meta.js` (el texto) y `getMetaCampaignConfigs` en `lib/meta-ads.js`. Diseño aprobado: maqueta "AdsGuard Lo que te funcionó" (https://claude.ai/artifact/HBTLvk5RyQhD1jzifTy4fn, privada). Sin base de datos: la "memoria" es el historial de la cuenta de Meta, que se recalcula en cada visita.
+
+### Campaña exitosa
+- **Horizonte: 12 meses.** Más atrás pesa en la consulta y lo que funcionó hace años ya no sirve de referencia. Se pide por mes (`time_increment=monthly`) para mostrar cuándo funcionó (el mes en que más gastó).
+- **Condiciones:** al menos 10 resultados (`minWinnerResults`) y ninguna condición de alerta que se pueda calcular con el total del año: M2 (contra las demás campañas con el mismo objetivo), M3, M7 y M8. M1 no aplica (se exigen resultados) y M4 necesita el detalle semanal.
+- No cuentan las campañas que **hoy** tienen alertas, aunque en el año les haya ido bien.
+- Por cada objetivo gana la de **menor costo por resultado**. Reconocimiento no participa (no tiene costo por resultado comparable).
+- Las campañas borradas deducen su objetivo del campo `objective`. Una campaña de mensajes borrada puede quedar como interacción o contactos.
+
+### Dónde se ve
+1. **"Tus campañas que mejor funcionaron"**, arriba de la lista de campañas: la ganadora de cada objetivo con su costo por resultado, cuántos resultados trajo y el mes.
+2. **"Lo que te funcionó antes"**, plegable en la tarjeta de una campaña activa **con alertas**, si hay ganadora con el mismo objetivo y esta campaña cuesta ≥ 1,2× por resultado (`pastMinImprovement`) o no consigue ninguno. Incluye:
+   - Comparación de 4 filas, sólo con los datos que existen en las dos: presupuesto diario (distinto si difiere > 20%), ubicación, edad y formato (video, carrusel, foto).
+   - Sugerencia en texto con lo distinto. El presupuesto sólo se sugiere **bajar**, nunca subir. Si no hay diferencias: "la diferencia puede estar en la imagen, el texto o la oferta".
+   - Cómo hacerlo: desde el Administrador de anuncios o duplicando la campaña que funcionó.
+
+### Consultas a Meta
+El historial de 12 meses va en paralelo con las demás consultas de `getMetaCampaigns`. La configuración (presupuesto, conjuntos con su segmentación, formato de hasta 10 anuncios) se lee después, **sólo** de las campañas que se comparan y de su ganadora. Si una falla, se registra un aviso y esa tarjeta muestra el titular sin la tabla. Los presupuestos de Meta vienen en centavos, salvo en monedas sin decimales (CLP, entre otras: `NO_DECIMAL_CURRENCIES`).
+
+La calibración registra `pastShown` y `pastCompared` (filas comparadas) por campaña.
+
 ## 5. Requisitos para producción (no son del cliente, son del operador de la app)
 
 1. **Proyecto en Google Cloud** con OAuth Client (tipo "Aplicación web"), redirect URI `https://<dominio>/api/auth/callback/google` (y `http://localhost:3000/api/auth/callback/google` en desarrollo).
