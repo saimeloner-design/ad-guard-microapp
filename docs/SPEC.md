@@ -181,7 +181,7 @@ La calibración registra `funnelBreak`, `cutLevel` y `cutParts` por campaña par
 Código: `lib/winners-meta.js` (elegir la ganadora y comparar configuraciones), `findPast` en `lib/diagnosis-meta.js` (el texto) y `getMetaCampaignConfigs` en `lib/meta-ads.js`. Diseño aprobado: maqueta "AdsGuard Lo que te funcionó" (https://claude.ai/artifact/HBTLvk5RyQhD1jzifTy4fn, privada). Sin base de datos: la "memoria" es el historial de la cuenta de Meta, que se recalcula en cada visita.
 
 ### Campaña exitosa
-- **Horizonte: 12 meses.** Más atrás pesa en la consulta y lo que funcionó hace años ya no sirve de referencia. Se pide por mes (`time_increment=monthly`) para mostrar cuándo funcionó (el mes en que más gastó).
+- **Horizonte: 18 meses** (`WINNER_HISTORY_DAYS` en `lib/meta-ads.js`). Se partió con 12; la medición de 3 años (abajo) mostró que en una cuenta chica cuesta poco, pero que las campañas viejas cambian la ganadora y en cuentas grandes la consulta crece con campañas × meses. 18 meses cubre la misma temporada del año anterior (p. ej. Navidad o Día de la Madre) sin ir tan atrás. Se pide por mes (`time_increment=monthly`) para mostrar cuándo funcionó (el mes en que más gastó).
 - **Condiciones:** al menos 10 resultados (`minWinnerResults`) y ninguna condición de alerta que se pueda calcular con el total del año: M2 (contra las demás campañas con el mismo objetivo), M3, M7 y M8. M1 no aplica (se exigen resultados) y M4 necesita el detalle semanal.
 - No cuentan las campañas que **hoy** tienen alertas, aunque en el año les haya ido bien.
 - Por cada objetivo gana la de **menor costo por resultado**. Reconocimiento no participa (no tiene costo por resultado comparable).
@@ -195,12 +195,14 @@ Código: `lib/winners-meta.js` (elegir la ganadora y comparar configuraciones), 
    - Cómo hacerlo: desde el Administrador de anuncios o duplicando la campaña que funcionó.
 
 ### Consultas a Meta
-El historial de 12 meses va en paralelo con las demás consultas de `getMetaCampaigns`. La configuración (presupuesto, conjuntos con su segmentación, formato de hasta 10 anuncios) se lee después, **sólo** de las campañas que se comparan y de su ganadora. Si una falla, se registra un aviso y esa tarjeta muestra el titular sin la tabla. Los presupuestos de Meta vienen en centavos, salvo en monedas sin decimales (CLP, entre otras: `NO_DECIMAL_CURRENCIES`).
+El historial de 18 meses va en paralelo con las demás consultas de `getMetaCampaigns`. La configuración (presupuesto, conjuntos con su segmentación, formato de hasta 10 anuncios) se lee después, **sólo** de las campañas que se comparan y de su ganadora. Si una falla, se registra un aviso y esa tarjeta muestra el titular sin la tabla. Los presupuestos de Meta vienen en centavos, salvo en monedas sin decimales (CLP, entre otras: `NO_DECIMAL_CURRENCIES`).
 
 La calibración registra `pastShown` y `pastCompared` (filas comparadas) por campaña.
 
 ### Medición de un horizonte de 3 años
-Uso interno: abrir la app con `?historial3=1` (p. ej. `https://ad-guard-microapp.vercel.app/?historial3=1`). Después de responder se pide en sombra el historial de 3 años con el mismo formato que el de 12 meses y se registra en Sentry (flujo `usage`, mensaje "Meta: prueba de historial de 3 años") cuánto tardó, cuántas filas y campañas trajo, y en qué objetivos la ganadora de 3 años es otra que la de 12 meses (`winnersChanged`). El usuario no ve nada distinto.
+Uso interno: abrir la app con `?historial3=1` (p. ej. `https://ad-guard-microapp.vercel.app/?historial3=1`). Después de responder se pide en sombra el historial de 3 años con el mismo formato que el de 18 meses y se registra en Sentry (flujo `usage`, mensaje "Meta: prueba de historial de 3 años") cuánto tardó, cuántas filas y campañas trajo, y en qué objetivos la ganadora de 3 años es otra que la de 18 meses (`winnersChanged`).
+
+Primera medición (2026-10-20, cuenta de prueba con 10 campañas en 3 años): 3 años tardó 1,4 s y 68 filas (1 página) contra 0,87 s y 21 filas de 12 meses; ambos consumieron 1% del límite de Meta. Con 3 años cambiaba la ganadora de mensajes por una campaña más antigua. El usuario no ve nada distinto.
 
 ## 5. Requisitos para producción (no son del cliente, son del operador de la app)
 

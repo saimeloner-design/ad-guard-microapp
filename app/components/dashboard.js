@@ -333,7 +333,7 @@ function ConfirmDialog({ campaign, currency, onConfirm, onCancel }) {
   );
 }
 
-/** "Tus campañas que mejor funcionaron": la mejor de cada objetivo en los últimos 12 meses (Meta). */
+/** "Tus campañas que mejor funcionaron": la mejor de cada objetivo en los últimos 18 meses (Meta). */
 function BestCampaigns({ best }) {
   return (
     <section aria-labelledby="best-title" className="bg-surface border border-line rounded-2xl shadow-xs overflow-hidden mb-5">
@@ -342,7 +342,7 @@ function BestCampaigns({ best }) {
           <Trophy className="size-4 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
           Tus campañas que mejor funcionaron
         </h2>
-        <p className="text-xs text-muted mt-0.5">La mejor de cada objetivo en los últimos 12 meses, sin alertas y con al menos 10 resultados.</p>
+        <p className="text-xs text-muted mt-0.5">La mejor de cada objetivo en los últimos 18 meses, sin alertas y con al menos 10 resultados.</p>
       </div>
       <ul>
         {best.map((b) => (
