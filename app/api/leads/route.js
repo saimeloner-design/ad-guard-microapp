@@ -39,7 +39,8 @@ export async function POST(request) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ secret, lead }),
-      signal: AbortSignal.timeout(10_000),
+      // Apps Script puede tardar más de 10 s en arrancar en frío; cortar antes muestra error aunque la fila se guarde.
+      signal: AbortSignal.timeout(25_000),
     });
     const data = await res.json().catch(() => null);
     if (!res.ok || !data?.ok) throw new Error(`La planilla respondió ${res.status}: ${data?.error ?? 'sin JSON'}`);
