@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { formatMoney, SEVERITY } from '@/lib/alerts';
-import { Bell, Check, ChevronDown, Clock, History, Lightbulb, Pause, PiggyBank, Play, Scissors, Search, Sprout, Target, Trophy, Users, Wallet, X } from 'lucide-react';
+import { Bell, Check, ChevronDown, Clock, History, Lightbulb, Pause, PiggyBank, Play, Scissors, Search, Sprout, Target, TriangleAlert, Trophy, Users, Wallet, X } from 'lucide-react';
 import { Alert, Button, StateCard, Toast } from './ui';
 
 const CHANNEL_LABELS = {
@@ -56,6 +56,42 @@ function AlertBox({ alert }) {
     <Alert tone={isPause ? 'danger' : 'warning'} title={alert.title}>
       {alert.message}
     </Alert>
+  );
+}
+
+/**
+ * Campaña para pausar: el motivo de pausar va a la vista y las alertas de Revisar
+ * quedan plegadas debajo. No se esconden: explican qué falló y sirven para la próxima campaña.
+ */
+function PauseAlerts({ alerts }) {
+  const pause = alerts.filter((a) => a.severity === SEVERITY.PAUSE);
+  const review = alerts.filter((a) => a.severity !== SEVERITY.PAUSE);
+  const one = review.length === 1;
+  return (
+    <>
+      {pause.map((a) => (
+        <AlertBox key={a.rule} alert={a} />
+      ))}
+      {review.length > 0 && (
+        <details className="group rounded-xl border border-line bg-surface">
+          <summary className="list-none [&::-webkit-details-marker]:hidden cursor-pointer grid grid-cols-[18px_1fr_16px] gap-2.5 items-center px-3 py-2 rounded-xl focus-visible:outline-2 focus-visible:outline-indigo-500">
+            <TriangleAlert className="size-[17px] text-amber-600 dark:text-amber-400" aria-hidden="true" />
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-amber-700 dark:text-amber-400">
+                {one ? 'Otra cosa para revisar' : `Otras ${review.length} cosas para revisar`}
+              </span>
+              <span className="block text-xs text-muted">{one ? 'Te sirve' : 'Te sirven'} para armar mejor la próxima campaña</span>
+            </span>
+            <ChevronDown className="size-4 text-muted transition-transform motion-reduce:transition-none group-open:rotate-180" aria-hidden="true" />
+          </summary>
+          <div className="px-2 pb-2 flex flex-col gap-1.5">
+            {review.map((a) => (
+              <AlertBox key={a.rule} alert={a} />
+            ))}
+          </div>
+        </details>
+      )}
+    </>
   );
 }
 
@@ -258,11 +294,7 @@ function CampaignCard({ campaign: c, currency, platform, onToggle, busy }) {
           </Button>
         </div>
 
-        {/* Si hay que pausar, basta con ese motivo; las demás alertas sólo agregan ruido. */}
-        {!isPaused &&
-          c.alerts
-            .filter((a) => !shouldPause || a.severity === SEVERITY.PAUSE)
-            .map((a) => <AlertBox key={a.rule} alert={a} />)}
+        {!isPaused && (shouldPause ? <PauseAlerts alerts={c.alerts} /> : c.alerts.map((a) => <AlertBox key={a.rule} alert={a} />))}
 
         {!isPaused && c.learning && (
           <Alert tone="neutral" icon={Sprout}>

@@ -143,6 +143,8 @@ Alertas de cuenta:
 - **A1 Sin medición**: las campañas de ventas y contactos gastaron y no registran ningún resultado (probable falta de píxel). En ese caso M1, M2 y M3 no se evalúan para ellas.
 - **A2 Estado de la cuenta**: pago pendiente, pago fallido (período de gracia) o cuenta en revisión.
 
+En el panel, si una campaña tiene alguna alerta de Pausar, esa queda a la vista y sus alertas de Revisar van plegadas debajo ("Otras N cosas para revisar · Te sirven para armar mejor la próxima campaña"), cerradas al entrar. Nunca se esconden. Maqueta aprobada: "AdsGuard Alertas para revisar" (https://claude.ai/artifact/7tZCAZ5opFJn4NCLh21CHb, privada).
+
 Los valores fijos (frecuencia 3, CTR 0,4%, 50% de visitas, 50 clics, 5.000 impresiones en mensajes) son reglas prácticas, no datos de mercado verificados. Se ajustan con el registro de calibración (§7).
 
 ## 4c. Diagnóstico de campañas de Meta
