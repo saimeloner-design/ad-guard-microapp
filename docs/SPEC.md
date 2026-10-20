@@ -120,7 +120,7 @@ En orden, se usa la primera que exista (mínimo 5 resultados):
 3. Ninguna: no se juzga si es caro; sólo aplican las reglas que no comparan.
 
 ### Campañas que se muestran
-Las activas, y las pausadas que gastaron algo en los últimos 90 días. Las pausadas sin gasto en ese período (promociones antiguas que se acumulan en la cuenta, a veces de varias páginas) se ocultan y sólo se informa cuántas son. Meta da acceso a todas las cuentas publicitarias del usuario aunque en el login elija un negocio, así que sin este filtro aparecían campañas viejas de otras páginas.
+Las que gastaron algo en los últimos 90 días y las creadas en ese período (aunque todavía no gasten). Las demás se ocultan y sólo se informa cuántas son, estén pausadas o activas: Meta deja en estado activo las campañas cuyo conjunto terminó por fecha, así que en cuentas antiguas se acumulan promociones de hace años, a veces de varias páginas. Meta da acceso a todas las cuentas publicitarias del usuario aunque en el login elija un negocio, así que sin este filtro aparecían campañas viejas de otras páginas.
 
 Uso interno para pruebas: agregar `?inactivas=1` a la URL de la app (por ejemplo `https://ad-guard-microapp.vercel.app/?inactivas=1`) muestra también las ocultas.
 

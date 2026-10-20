@@ -219,7 +219,7 @@ function HiddenNote({ count, className = '' }) {
 /**
  * Panel con resumen, alertas de cuenta y campañas.
  * `onSetStatus(campaign, 'PAUSED' | 'ENABLED')` debe devolver una promesa. `platform`: 'google' | 'meta'.
- * `hiddenCount`: campañas pausadas sin gasto en 90 días que no se muestran (Meta).
+ * `hiddenCount`: campañas antiguas sin gasto en 90 días que no se muestran (Meta).
  */
 export function Dashboard({ account, evaluation, onSetStatus, onChangeAccount, platform = 'google', hiddenCount = 0 }) {
   const [pending, setPending] = useState(null);
