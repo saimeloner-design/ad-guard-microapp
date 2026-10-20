@@ -3,6 +3,9 @@ import { SPEND_OPTIONS, TRACKING_PARAMS } from '@/lib/leads';
 
 const FLOW = 'leads';
 
+// Debe superar el timeout de la llamada a la planilla (25 s) para que Vercel no corte antes.
+export const maxDuration = 30;
+
 const clean = (value, max) => (typeof value === 'string' ? value.trim().slice(0, max) : '');
 
 const fail = (status, error) => Response.json({ error }, { status });
