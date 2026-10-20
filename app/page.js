@@ -285,8 +285,15 @@ function AccountPicker({ source, accounts, managers, onSelect }) {
 function LiveView({ source, account, onChangeAccount }) {
   const params = source.params(account);
   // Uso interno para pruebas: ?inactivas=1 muestra también las campañas antiguas sin gasto (Meta).
-  const showInactive = useSearchParams().get('inactivas') === '1';
-  const query = new URLSearchParams({ ...params, ...(showInactive && { inactivas: '1' }) }).toString();
+  const searchParams = useSearchParams();
+  const showInactive = searchParams.get('inactivas') === '1';
+  // Uso interno: ?historial3=1 mide cuánto tarda y consume pedir 3 años de historial (Meta).
+  const measureLongHistory = searchParams.get('historial3') === '1';
+  const query = new URLSearchParams({
+    ...params,
+    ...(showInactive && { inactivas: '1' }),
+    ...(measureLongHistory && { historial3: '1' }),
+  }).toString();
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
 

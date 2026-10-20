@@ -199,6 +199,9 @@ El historial de 12 meses va en paralelo con las demás consultas de `getMetaCamp
 
 La calibración registra `pastShown` y `pastCompared` (filas comparadas) por campaña.
 
+### Medición de un horizonte de 3 años
+Uso interno: abrir la app con `?historial3=1` (p. ej. `https://ad-guard-microapp.vercel.app/?historial3=1`). Después de responder se pide en sombra el historial de 3 años con el mismo formato que el de 12 meses y se registra en Sentry (flujo `usage`, mensaje "Meta: prueba de historial de 3 años") cuánto tardó, cuántas filas y campañas trajo, y en qué objetivos la ganadora de 3 años es otra que la de 12 meses (`winnersChanged`). El usuario no ve nada distinto.
+
 ## 5. Requisitos para producción (no son del cliente, son del operador de la app)
 
 1. **Proyecto en Google Cloud** con OAuth Client (tipo "Aplicación web"), redirect URI `https://<dominio>/api/auth/callback/google` (y `http://localhost:3000/api/auth/callback/google` en desarrollo).
@@ -219,6 +222,8 @@ La calibración registra `pastShown` y `pastCompared` (filas comparadas) por cam
 ## 7. Calibración y análisis en sombra
 
 Ambos sólo escriben logs en Sentry (proyecto `ad-guard-microapp`); el usuario no ve nada distinto.
+
+**Consumo de Meta** (flujo `usage`): cada respuesta de Meta registra el consumo de sus límites que viene en los encabezados (`x-app-usage`, `x-ad-account-usage`, `x-business-use-case-usage`, en % del límite), y cada listado completo registra páginas, filas, bytes, duración y el mayor consumo visto. Sirve para saber cuánto "gasta" cada consulta antes de agregar otras.
 
 **Calibración** (`lib/calibration.js`, flujo `calibration`): cada vez que se cargan las campañas se registra, por campaña, sus métricas (CTR, frecuencia, visitas/clics, costo por resultado, comparación con la referencia, ROAS) y qué alertas salieron. Con varias cuentas reales se mira la distribución y se ajustan los umbrales; por ejemplo, alertar sólo al 10% peor. Como cada recarga vuelve a registrar, al analizar hay que quedarse con un registro por campaña y día.
 

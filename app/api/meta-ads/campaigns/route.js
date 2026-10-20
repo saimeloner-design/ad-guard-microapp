@@ -1,4 +1,4 @@
-import { evaluateMetaAccount } from '@/lib/alerts-meta';
+import { evaluateMetaAccount, findMetaWinners } from '@/lib/alerts-meta';
 import { logCalibration } from '@/lib/calibration';
 import { flushLogsAfterResponse, reportError } from '@/lib/log';
 import {
@@ -7,6 +7,7 @@ import {
   getMetaBreakdownRows,
   getMetaCampaignConfigs,
   getMetaCampaigns,
+  measureMetaLongHistory,
   metaErrorResponse,
   normalizeBreakdown,
 } from '@/lib/meta-ads';
@@ -19,6 +20,8 @@ export async function GET(request) {
     const accountId = cleanAdAccountId(params.get('accountId'));
     // Uso interno para pruebas: ?inactivas=1 en la app muestra también las campañas antiguas sin gasto.
     const includeInactive = params.get('inactivas') === '1';
+    // Uso interno: ?historial3=1 mide en sombra cuánto tarda y consume pedir 3 años de historial (flujo `usage`).
+    const measureLongHistory = params.get('historial3') === '1';
     const accessToken = await getMetaAccessToken(request);
     // El detalle por anuncio y conjunto se pide en paralelo. Si falla, el panel se muestra igual, sin "Pausa solo esta parte".
     const breakdownRows = getMetaBreakdownRows(accessToken, accountId).catch((error) => {
@@ -51,6 +54,15 @@ export async function GET(request) {
           logWasteConcentration({ platform: 'meta', level, accountId, evaluation: result, children, isMeasured: (c) => c.measured });
         }
       });
+    }
+
+    if (measureLongHistory) {
+      runInShadow('meta-historial-3-anios', () =>
+        measureMetaLongHistory(accessToken, accountId, new Map(campaigns.map((c) => [c.id, c.resultType])), {
+          findWinners: findMetaWinners,
+          yearHistory: context.yearHistory,
+        })
+      );
     }
 
     // `context` vuelve al navegador para reevaluar las alertas al pausar o activar.
