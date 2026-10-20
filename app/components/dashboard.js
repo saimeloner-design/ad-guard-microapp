@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { formatMoney, SEVERITY } from '@/lib/alerts';
-import { Bell, Clock, Pause, PiggyBank, Play, Search, Sprout, Target, Users, Wallet } from 'lucide-react';
+import { Bell, Check, ChevronDown, Clock, Lightbulb, Pause, PiggyBank, Play, Scissors, Search, Sprout, Target, Users, Wallet, X } from 'lucide-react';
 import { Alert, Button, StateCard, Toast } from './ui';
 
 const CHANNEL_LABELS = {
@@ -85,6 +85,93 @@ function Metric({ label, value }) {
   );
 }
 
+/** Recorrido de la gente (vieron → clic → web → resultado) con el paso donde se pierde la plata en rojo. */
+function Funnel({ steps }) {
+  return (
+    <ol className="grid" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }} aria-label="Recorrido de la gente">
+      {steps.map((s, i) => (
+        <li key={s.key} className="relative flex flex-col items-center text-center gap-0.5 min-w-0">
+          {i > 0 && (
+            <span
+              aria-hidden="true"
+              className={`absolute top-[11px] right-1/2 w-full h-0.5 ${s.bad || steps[i - 1].bad ? 'bg-red-200 dark:bg-red-500/30' : 'bg-line'}`}
+            />
+          )}
+          <span
+            className={`relative size-6 grid place-items-center rounded-full ring-2 ring-surface ${
+              s.bad ? 'bg-red-600 text-white dark:bg-red-500' : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400'
+            }`}
+          >
+            {s.bad ? <X className="size-3.5" strokeWidth={3} aria-hidden="true" /> : <Check className="size-3.5" strokeWidth={3} aria-hidden="true" />}
+          </span>
+          <span className={`text-[15px] font-semibold tabular-nums tracking-tight mt-1 ${s.bad ? 'text-red-600 dark:text-red-400' : 'text-fg'}`}>
+            {s.value.toLocaleString('es-CL')}
+          </span>
+          <span className={`text-xs leading-tight ${s.bad ? 'font-semibold text-red-600 dark:text-red-400' : 'text-muted'}`}>
+            {s.label}
+            {s.bad && <span className="sr-only"> (aquí se pierde la plata)</span>}
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+const TIP_TONES = {
+  fix: { box: 'bg-indigo-50 dark:bg-indigo-500/10', icon: 'text-indigo-600 dark:text-indigo-300', eyebrow: 'text-indigo-600 dark:text-indigo-300' },
+  cut: { box: 'bg-surface-3', icon: 'text-fg-2', eyebrow: 'text-muted' },
+};
+
+/** Sugerencia plegable: se ve el titular y la explicación se abre al tocarlo. */
+function Tip({ tone, icon: TipIcon, eyebrow, title, children }) {
+  const t = TIP_TONES[tone];
+  return (
+    <details className={`group rounded-xl ${t.box}`}>
+      <summary className="list-none [&::-webkit-details-marker]:hidden cursor-pointer grid grid-cols-[20px_1fr_16px] gap-2.5 items-start px-3 py-2.5 rounded-xl focus-visible:outline-2 focus-visible:outline-indigo-500">
+        <TipIcon className={`size-[18px] mt-0.5 ${t.icon}`} aria-hidden="true" />
+        <span className="min-w-0">
+          <span className={`block text-[11px] font-semibold uppercase tracking-wider ${t.eyebrow}`}>{eyebrow}</span>
+          <span className="block text-sm font-semibold text-fg leading-snug mt-0.5">{title}</span>
+        </span>
+        <ChevronDown className="size-4 mt-1 text-muted transition-transform motion-reduce:transition-none group-open:rotate-180" aria-hidden="true" />
+      </summary>
+      <div className="px-3 pb-3 pl-[42px] text-[13px] text-fg-2 leading-relaxed space-y-2.5">{children}</div>
+    </details>
+  );
+}
+
+function Diagnosis({ diagnosis: d }) {
+  return (
+    <div className="border-t border-dashed border-line pt-3 flex flex-col gap-3">
+      {d.steps && (
+        <>
+          <h4 className="text-[13px] font-semibold text-fg">¿Dónde se pierde la plata?</h4>
+          <Funnel steps={d.steps} />
+          <Tip tone="fix" icon={Lightbulb} eyebrow="Qué cambiar" title={d.fix.title}>
+            <p>{d.fix.detail}</p>
+          </Tip>
+        </>
+      )}
+      {d.cut && (
+        <Tip tone="cut" icon={Scissors} eyebrow="Pausa solo esta parte" title={d.cut.title}>
+          <ul className="rounded-lg border border-line bg-surface divide-y divide-line overflow-hidden">
+            {d.cut.parts.map((p) => (
+              <li key={p.id} className="grid grid-cols-[1fr_auto] gap-x-3 px-2.5 py-2">
+                <span className="min-w-0 break-words font-medium text-fg">{p.name}</span>
+                <span className={`font-semibold whitespace-nowrap ${p.wasted ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                  {p.results}
+                </span>
+                <span className="col-span-2 text-xs text-muted tabular-nums">gastó {p.cost}</span>
+              </li>
+            ))}
+          </ul>
+          <p>{d.cut.detail}</p>
+        </Tip>
+      )}
+    </div>
+  );
+}
+
 function CampaignCard({ campaign: c, currency, platform, onToggle, busy }) {
   const isPaused = c.status === 'paused';
   const shouldPause = c.alerts.some((a) => a.severity === SEVERITY.PAUSE);
@@ -151,6 +238,8 @@ function CampaignCard({ campaign: c, currency, platform, onToggle, busy }) {
           </div>
           {c.detail && <p className="text-xs text-muted mt-2 pt-2 border-t border-line">{c.detail}</p>}
         </div>
+
+        {!isPaused && c.diagnosis && <Diagnosis diagnosis={c.diagnosis} />}
       </div>
     </div>
   );

@@ -145,6 +145,37 @@ Alertas de cuenta:
 
 Los valores fijos (frecuencia 3, CTR 0,4%, 50% de visitas, 50 clics, 5.000 impresiones en mensajes) son reglas prácticas, no datos de mercado verificados. Se ajustan con el registro de calibración (§7).
 
+## 4c. Diagnóstico de campañas de Meta
+
+Código: `lib/diagnosis-meta.js` (se llama desde `evaluateMetaAccount`; umbral en `META_ALERT_CONFIG.wastedPartCostMultiplier`). Diseño aprobado: maqueta "AdsGuard Diagnóstico" (https://claude.ai/artifact/UgydpGY6JrQU7Mjxysp8Do, privada).
+
+El diagnóstico **no agrega ni quita alertas**: todas siguen visibles aunque el recorrido muestre lo mismo, porque muchos usuarios no lo deducen solos. Sólo explica dónde está la falla y qué cambiar. Es texto: la app no hace el cambio. Sólo para campañas activas que ya se evalúan (no aprendiendo ni sin publicar).
+
+### 1. ¿Dónde se pierde la plata?
+Recorrido de la gente con los pasos que se pueden medir según el objetivo:
+
+| Paso | Dato | Cuándo aparece |
+|---|---|---|
+| Personas lo vieron | Alcance (o impresiones si no hay alcance) | Siempre |
+| Hicieron clic | Clics en el enlace | Ventas, contactos, tráfico, app |
+| Llegaron a tu web | Visitas a la página | Ventas, contactos, tráfico, y sólo si el píxel mide visitas |
+| Te compraron / dejaron sus datos / te escribieron / instalaron tu app | Resultados | Ventas, contactos, mensajes, app, si se miden |
+
+Interacción y reconocimiento no tienen recorrido. El paso que falla se deduce de las alertas, y se marca **el primero** (la fuga más temprana es la que hay que arreglar antes):
+1. M4 → clic ("Cambia la imagen o el video").
+2. M8 → clic ("Cambia la imagen o el texto").
+3. M7 → web ("Revisa tu web: muchos se van antes de que cargue").
+4. M1, M2 o M3 → resultado (texto según el objetivo: página, formulario, mensajes, tienda de apps; M3 sin M1/M2: "Tus ventas no alcanzan a cubrir lo que gastas"). En tráfico el resultado es el clic, así que se marca el clic.
+
+Cada recorrido trae un "Qué cambiar": un titular visible y la explicación plegada.
+
+### 2. Pausa solo esta parte
+Se muestra cuando, en una campaña con resultados medidos, un anuncio que hoy publica **gastó ≥ 2× el costo por resultado de la campaña sin ningún resultado** y otro anuncio de la misma campaña sí trae resultados. Si no hay caso a nivel de anuncio, se busca lo mismo entre conjuntos de anuncios. Si todas las partes fallan no aparece: queda la alerta de la campaña completa. Se lista lo que funciona (hasta 3) y lo que gasta sin resultados, y se indica pausarlo desde el Administrador de anuncios.
+
+El detalle por conjunto y anuncio (`getMetaBreakdownRows`) se pide en paralelo con las campañas. Si falla, se reporta a Sentry y el panel se muestra sin esta parte.
+
+La calibración registra `funnelBreak`, `cutLevel` y `cutParts` por campaña para ajustar estos criterios.
+
 ## 5. Requisitos para producción (no son del cliente, son del operador de la app)
 
 1. **Proyecto en Google Cloud** con OAuth Client (tipo "Aplicación web"), redirect URI `https://<dominio>/api/auth/callback/google` (y `http://localhost:3000/api/auth/callback/google` en desarrollo).
@@ -168,10 +199,10 @@ Ambos sólo escriben logs en Sentry (proyecto `ad-guard-microapp`); el usuario n
 
 **Calibración** (`lib/calibration.js`, flujo `calibration`): cada vez que se cargan las campañas se registra, por campaña, sus métricas (CTR, frecuencia, visitas/clics, costo por resultado, comparación con la referencia, ROAS) y qué alertas salieron. Con varias cuentas reales se mira la distribución y se ajustan los umbrales; por ejemplo, alertar sólo al 10% peor. Como cada recarga vuelve a registrar, al analizar hay que quedarse con un registro por campaña y día.
 
-**Análisis en sombra** (`lib/shadow.js`, flujo `shadow`): después de responder, se consulta el gasto y los resultados por grupo de anuncios, anuncio y palabra clave (Google) o por conjunto y anuncio (Meta), y se registra por campaña:
+**Análisis en sombra** (`lib/shadow.js`, flujo `shadow`): después de responder, con el gasto y los resultados por grupo de anuncios, anuncio y palabra clave (Google) o por conjunto y anuncio (Meta; en Meta es el mismo detalle que usa el diagnóstico, §4c), se registra por campaña:
 - `partsWithSpend`: cuántas partes gastaron (¿la mayoría tiene una sola?);
 - `wastedShare`: qué parte del gasto se fue en partes sin resultados;
 - `top1WastedShare` / `top2WastedShare`: cuánto de ese gasto se concentra en la peor parte o las dos peores;
 - `campaignFlaggedPause`: si la campaña entera ya tenía alerta de pausar.
 
-La pregunta a responder tras 2 o 3 semanas con usuarios piloto: ¿en cuántas campañas que se ven "aceptables" el dinero se pierde en 1 o 2 partes? Si es frecuente, se agrega "Ver dónde se pierde el dinero" con pausa por parte; si casi todos tienen campañas de una sola parte, no vale la pena.
+La pregunta a responder tras 2 o 3 semanas con usuarios piloto: ¿en cuántas campañas que se ven "aceptables" el dinero se pierde en 1 o 2 partes? Si es frecuente, se agrega "Ver dónde se pierde el dinero" con pausa por parte; si casi todos tienen campañas de una sola parte, no vale la pena. En Meta ya se muestra como "Pausa solo esta parte" (§4c); el registro sirve para ajustar su umbral.
