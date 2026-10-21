@@ -255,7 +255,7 @@ Botón en cada ganadora de "Lo que funciona" y en "Lo que te funcionó antes": c
 El monto sugerido es el doble del costo por resultado típico de la cuenta (o 3 días de gasto) redondeado. Activar pide confirmación; desactivar borra la regla. Cambiar el monto con una guardia activa la vuelve a crear. Las reglas se leen junto con las campañas; si no se pueden leer, Protección lo avisa y el resto del panel funciona igual.
 
 ### Tope de gasto
-`spend_cap` de la cuenta publicitaria: cuando lo gastado desde que se puso (o se reinició) llega al tope, Meta detiene todos los anuncios. Protección muestra cuánto va, cuánto queda y en cuántos días se llega al ritmo de los últimos 30 días; permite ponerlo, cambiarlo, empezar de cero (`spend_cap_action=reset`) o quitarlo (`spend_cap_action=delete`), siempre con confirmación. Los montos van en la unidad mínima de la moneda (`toMetaAmount`).
+`spend_cap` de la cuenta publicitaria: cuando lo gastado desde que se puso (o se reinició) llega al tope, Meta detiene todos los anuncios. Protección muestra cuánto va, cuánto queda y en cuántos días se llega al ritmo de los últimos 30 días; permite ponerlo, cambiarlo, empezar de cero (`spend_cap_action=reset`) o quitarlo (`spend_cap_action=delete`), siempre con confirmación. Si la cuenta no tiene tope, se sugiere 1,2× lo gastado en los últimos 30 días, redondeado. Los montos van en la unidad mínima de la moneda (`toMetaAmount`).
 
 Todas las acciones que escriben en Meta usan el permiso `ads_management`, que la app ya pide. Si Meta rechaza un cambio con un mensaje para el usuario (`error_user_msg`), se muestra ese mensaje.
 
