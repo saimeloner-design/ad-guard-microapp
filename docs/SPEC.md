@@ -29,7 +29,7 @@ Ayudar a emprendedores que gestionan sus propios anuncios —sin especialista en
 - Lectura de campañas activas y pausadas con métricas de los **últimos 30 días**.
 - Motor de alertas (sección 4) con mensajes en español simple.
 - Pausar / reactivar campaña desde la app (con confirmación).
-- Modo demo con datos de ejemplo, para mostrar la app sin cuenta conectada. Usa campañas de Meta Ads (`lib/demo-data.js`) con un caso de cada alerta principal.
+- Modo demo con datos de ejemplo, para mostrar la app sin cuenta conectada. Usa campañas de Meta Ads (`lib/demo-data.js`) con un caso de cada alerta principal. Tiene su propia URL, `/demo`, que se puede compartir y muestra la demo aunque haya sesión iniciada; "Conectar Meta" desde la demo vuelve a `/` después del login.
 
 ### Fuera de alcance por ahora
 - Meta Ads (fase 2; la UI vuelve a tener pestañas por canal cuando exista).
