@@ -20,6 +20,20 @@ function readStoredAccount(key) {
   }
 }
 
+/** Lo que el usuario gana por venta (Protección). Se guarda sólo en este navegador, por cuenta. */
+function useProfit(accountKey) {
+  const key = `adsguard.gananciaPorVenta.${accountKey}`;
+  const [profit, setProfit] = useState(() => Number(readStoredAccount(key)) || 0);
+  const change = useCallback(
+    (value) => {
+      setProfit(value);
+      storeAccount(key, value ? String(value) : null);
+    },
+    [key]
+  );
+  return [profit, change];
+}
+
 function storeAccount(key, id) {
   try {
     if (id) localStorage.setItem(key, id);
@@ -49,6 +63,7 @@ const SOURCES = {
     storageKey: 'adguard.customerId',
     params: (a) => ({ customerId: a.id, ...(a.loginCustomerId && { loginCustomerId: a.loginCustomerId }) }),
     evaluate: (data) => evaluateAccount(data.campaigns, { currency: data.account.currency }),
+    extraActions: false,
     formatId: (id) => id.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3'),
     searching: 'Buscando tus cuentas de Google Ads…',
     accountsLabel: 'cuentas de Google Ads con anuncios',
@@ -62,7 +77,8 @@ const SOURCES = {
     api: '/api/meta-ads',
     storageKey: 'adguard.metaAccountId',
     params: (a) => ({ accountId: a.id }),
-    evaluate: (data) => evaluateMetaAccount(data.campaigns, { currency: data.account.currency, context: data.context }),
+    evaluate: (data, profitPerSale) => evaluateMetaAccount(data.campaigns, { currency: data.account.currency, context: data.context, profitPerSale }),
+    extraActions: true,
     formatId: (id) => `ID ${id}`,
     searching: 'Buscando tus cuentas publicitarias de Meta…',
     accountsLabel: 'cuentas publicitarias de Meta',
@@ -209,16 +225,47 @@ function Landing({ onDemo, notice }) {
   );
 }
 
+/** Marca como pausados los anuncios o conjuntos de una campaña, para reevaluarla sin volver a pedir los datos. */
+function withPartsPaused(campaigns, campaignId, ids) {
+  const off = new Set(ids);
+  return campaigns.map((c) =>
+    c.id === campaignId && c.parts
+      ? { ...c, parts: Object.fromEntries(Object.entries(c.parts).map(([level, list]) => [level, list.map((p) => (off.has(p.id) ? { ...p, active: false } : p))])) }
+      : c
+  );
+}
+
+// Guardias y tope de la demo: se simulan en el navegador.
+function demoProtection(prev, body) {
+  const guards = { ...prev.guards };
+  if (body.action === 'guard-on') guards[body.key] = { active: true, amount: body.amount, profit: body.profit, ruleIds: [] };
+  if (body.action === 'guard-off') guards[body.key] = { active: false, ruleIds: [] };
+  if (body.action === 'cap-set') return { ...prev, guards, spendCap: body.amount };
+  if (body.action === 'cap-reset') return { ...prev, guards, amountSpent: 0 };
+  if (body.action === 'cap-delete') return { ...prev, guards, spendCap: 0, amountSpent: 0 };
+  return { ...prev, guards };
+}
+
 function DemoView() {
   const [campaigns, setCampaigns] = useState(DEMO_CAMPAIGNS);
+  const [protection, setProtection] = useState(DEMO_CONTEXT.protection);
+  const [profit, setProfit] = useProfit('demo');
   const evaluation = useMemo(
-    () => evaluateMetaAccount(campaigns, { currency: DEMO_ACCOUNT.currency, context: DEMO_CONTEXT }),
-    [campaigns]
+    () => evaluateMetaAccount(campaigns, { currency: DEMO_ACCOUNT.currency, context: DEMO_CONTEXT, profitPerSale: profit }),
+    [campaigns, profit]
   );
 
-  const onSetStatus = async (campaign, status) => {
-    setCampaigns((prev) => prev.map((c) => (c.id === campaign.id ? { ...c, status: status === 'ENABLED' ? 'active' : 'paused' } : c)));
-  };
+  const actions = useMemo(
+    () => ({
+      setStatus: async (campaign, status) => {
+        setCampaigns((prev) => prev.map((c) => (c.id === campaign.id ? { ...c, status: status === 'ENABLED' ? 'active' : 'paused' } : c)));
+      },
+      setPartStatus: async (campaign, parts) => setCampaigns((prev) => withPartsPaused(prev, campaign.id, parts.map((p) => p.id))),
+      copyCampaign: async () => ({}),
+      protection: async (body) => setProtection((prev) => demoProtection(prev, body)),
+    }),
+    []
+  );
 
   return (
     <>
@@ -232,9 +279,18 @@ function DemoView() {
           </Button>
         }
       >
-        Pausar o activar aquí no cambia nada real. Conecta tu cuenta de Meta para revisar tus propias campañas de Facebook e Instagram.
+        Pausar, copiar o activar guardias aquí no cambia nada real. Conecta tu cuenta de Meta para revisar tus propias campañas de Facebook e
+        Instagram.
       </Alert>
-      <Dashboard account={DEMO_ACCOUNT} evaluation={evaluation} onSetStatus={onSetStatus} platform="meta" />
+      <Dashboard
+        account={DEMO_ACCOUNT}
+        evaluation={evaluation}
+        actions={actions}
+        platform="meta"
+        profit={profit}
+        onProfitChange={setProfit}
+        protection={protection}
+      />
     </>
   );
 }
@@ -296,6 +352,7 @@ function LiveView({ source, account, onChangeAccount }) {
   }).toString();
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
+  const [profit, setProfit] = useProfit(`${source.id}.${account.id}`);
 
   const load = useCallback(() => {
     fetchJson(`${source.api}/campaigns?${query}`).then(setData, setError);
@@ -309,19 +366,43 @@ function LiveView({ source, account, onChangeAccount }) {
     load();
   };
 
-  // Se reevalúa en el navegador para que las alertas se actualicen al pausar o activar.
-  const evaluation = useMemo(() => data && source.evaluate(data), [data, source]);
+  // Se reevalúa en el navegador para que las alertas se actualicen al pausar, activar o cambiar la ganancia por venta.
+  const evaluation = useMemo(() => data && source.evaluate(data, profit), [data, source, profit]);
 
-  const onSetStatus = async (campaign, status) => {
-    const res = await fetchJson(`${source.api}/campaigns/${campaign.id}/status`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...params, status }),
-    });
-    setData((prev) => ({
-      ...prev,
-      campaigns: prev.campaigns.map((c) => (c.id === campaign.id ? { ...c, status: res.status } : c)),
-    }));
+  const post = (path, body) =>
+    fetchJson(`${source.api}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+  const actions = {
+    setStatus: async (campaign, status) => {
+      const res = await post(`/campaigns/${campaign.id}/status`, { ...params, status });
+      setData((prev) => ({
+        ...prev,
+        campaigns: prev.campaigns.map((c) => (c.id === campaign.id ? { ...c, status: res.status } : c)),
+      }));
+    },
+    ...(source.extraActions && {
+      setPartStatus: async (campaign, parts, status) => {
+        const done = [];
+        try {
+          for (const p of parts) {
+            await post(`/parts/${p.id}/status`, { status });
+            done.push(p.id);
+          }
+        } finally {
+          setData((prev) => ({ ...prev, campaigns: withPartsPaused(prev.campaigns, campaign.id, done) }));
+        }
+      },
+      copyCampaign: async (campaignId) => {
+        const res = await post(`/campaigns/${campaignId}/copy`, {});
+        return {
+          url: res.campaignId && `https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${account.id}&selected_campaign_ids=${res.campaignId}`,
+        };
+      },
+      protection: async (body) => {
+        const next = await post('/protection', { ...body, accountId: account.id, currency: data.account.currency });
+        setData((prev) => ({ ...prev, context: { ...prev.context, protection: next } }));
+      },
+    }),
   };
 
   if (error) return <ErrorState source={source} error={error} onRetry={retry} />;
@@ -330,10 +411,13 @@ function LiveView({ source, account, onChangeAccount }) {
     <Dashboard
       account={data.account}
       evaluation={evaluation}
-      onSetStatus={onSetStatus}
+      actions={actions}
       onChangeAccount={onChangeAccount}
       platform={source.id}
       hiddenCount={data.hiddenCount}
+      profit={profit}
+      onProfitChange={setProfit}
+      protection={data.context?.protection}
     />
   );
 }

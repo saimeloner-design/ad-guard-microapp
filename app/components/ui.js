@@ -124,7 +124,7 @@ const TOAST_TONES = {
 };
 
 /** Notificación flotante abajo de la pantalla. Las de éxito se cierran solas; las de error esperan al usuario. */
-export function Toast({ toast, onDismiss }) {
+export function Toast({ toast, onDismiss, className = 'bottom-0' }) {
   useEffect(() => {
     if (toast?.tone !== 'success') return;
     const id = setTimeout(onDismiss, 4000);
@@ -134,7 +134,7 @@ export function Toast({ toast, onDismiss }) {
   if (!toast) return null;
   const { Icon: ToastIcon, color } = TOAST_TONES[toast.tone];
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 p-4 flex justify-center pointer-events-none">
+    <div className={`fixed inset-x-0 z-40 p-4 flex justify-center pointer-events-none ${className}`}>
       <div
         role={toast.tone === 'danger' ? 'alert' : 'status'}
         className="motion-safe:animate-slide-up pointer-events-auto w-full max-w-md flex gap-3 items-start rounded-2xl bg-slate-900 text-white border border-transparent dark:bg-slate-800 dark:border-white/10 px-4 py-3.5 shadow-2xl shadow-slate-900/30"

@@ -138,6 +138,7 @@ No se evalúa (se marca "Aprendiendo") si algún conjunto que publica está en f
 | M6 | Anuncios rechazados | Anuncios rechazados o con problemas en una campaña activa (siempre, aunque esté aprendiendo) | Revisar |
 | M7 | Clics que no llegan a la web | Ventas, contactos o tráfico; ≥ 100 clics y visitas a la página / clics < 50% (sólo si el píxel mide visitas) | Revisar |
 | M8 | Casi nadie hace clic | Ventas, contactos, tráfico o app; ≥ 3.000 impresiones y CTR del enlace < 0,4% | Revisar |
+| M9 | Pierde plata en cada venta | Ventas medidas, ≥ 3 compras (`minProfitPurchases`) y costo por compra > lo que el usuario dijo que gana por venta (Protección, §4e). Si no lo supera, el detalle muestra cuánto le queda por venta | **Pausar** |
 
 Alertas de cuenta:
 - **A1 Sin medición**: las campañas de ventas y contactos gastaron y no registran ningún resultado (probable falta de píxel). En ese caso M1, M2 y M3 no se evalúan para ellas.
@@ -172,7 +173,7 @@ Interacción y reconocimiento no tienen recorrido. El paso que falla se deduce d
 Cada recorrido trae un "Qué cambiar": un titular visible y la explicación plegada.
 
 ### 2. Pausa solo esta parte
-Se muestra cuando, en una campaña con resultados medidos, un anuncio que hoy publica **gastó ≥ 2× el costo por resultado de la campaña sin ningún resultado** y otro anuncio de la misma campaña sí trae resultados. Si no hay caso a nivel de anuncio, se busca lo mismo entre conjuntos de anuncios. Si todas las partes fallan no aparece: queda la alerta de la campaña completa. Se lista lo que funciona (hasta 3) y lo que gasta sin resultados, y se indica pausarlo desde el Administrador de anuncios.
+Se muestra cuando, en una campaña con resultados medidos, un anuncio que hoy publica **gastó ≥ 2× el costo por resultado de la campaña sin ningún resultado** y otro anuncio de la misma campaña sí trae resultados. Si no hay caso a nivel de anuncio, se busca lo mismo entre conjuntos de anuncios. Si todas las partes fallan no aparece: queda la alerta de la campaña completa. Se lista lo que funciona (hasta 3) y lo que gasta sin resultados, con un botón para pausar sólo esas partes desde AdsGuard (con confirmación; `POST /api/meta-ads/parts/{id}/status`).
 
 El detalle por conjunto y anuncio (`getMetaBreakdownRows`) se pide en paralelo con las campañas. Si falla, se reporta a Sentry y el panel se muestra sin esta parte.
 
@@ -190,14 +191,14 @@ Código: `lib/winners-meta.js` (elegir la ganadora y comparar configuraciones), 
 - Las campañas borradas deducen su objetivo del campo `objective`. Una campaña de mensajes borrada puede quedar como interacción o contactos.
 
 ### Dónde se ve
-1. **"Tus campañas que mejor funcionaron"**, arriba de la lista de campañas: la ganadora de cada objetivo con su costo por resultado, cuántos resultados trajo y el mes.
+1. **Pestaña "Lo que funciona"** (§8): la ganadora de cada objetivo con su costo por resultado, cuántos resultados trajo, el mes, su configuración y el botón "Crear una campaña igual" (§4e).
 2. **"Lo que te funcionó antes"**, plegable en la tarjeta de una campaña activa **con alertas**, si hay ganadora con el mismo objetivo y esta campaña cuesta ≥ 1,2× por resultado (`pastMinImprovement`) o no consigue ninguno. Incluye:
    - Comparación de 4 filas, sólo con los datos que existen en las dos: presupuesto diario (distinto si difiere > 20%), ubicación, edad y formato (video, carrusel, foto).
    - Sugerencia en texto con lo distinto. El presupuesto sólo se sugiere **bajar**, nunca subir. Si no hay diferencias: "la diferencia puede estar en la imagen, el texto o la oferta".
-   - Cómo hacerlo: desde el Administrador de anuncios o duplicando la campaña que funcionó.
+   - Cómo hacerlo: desde el Administrador de anuncios o con el botón que crea una copia en pausa de la campaña que funcionó.
 
 ### Consultas a Meta
-El historial de 18 meses va en paralelo con las demás consultas de `getMetaCampaigns`. La configuración (presupuesto, conjuntos con su segmentación, formato de hasta 10 anuncios) se lee después, **sólo** de las campañas que se comparan y de su ganadora. Si una falla, se registra un aviso y esa tarjeta muestra el titular sin la tabla. Los presupuestos de Meta vienen en centavos, salvo en monedas sin decimales (CLP, entre otras: `NO_DECIMAL_CURRENCIES`).
+El historial de 18 meses va en paralelo con las demás consultas de `getMetaCampaigns`. La configuración (presupuesto, conjuntos con su segmentación, formato de hasta 10 anuncios) se lee después, **sólo** de las campañas que se comparan, de las ganadoras de cada objetivo y de las campañas nuevas (§4e). Si una falla, se registra un aviso y esa tarjeta muestra el titular sin la tabla. Los presupuestos de Meta vienen en centavos, salvo en monedas sin decimales (CLP, entre otras: `NO_DECIMAL_CURRENCIES`).
 
 La calibración registra `pastShown` y `pastCompared` (filas comparadas) por campaña.
 
@@ -205,6 +206,58 @@ La calibración registra `pastShown` y `pastCompared` (filas comparadas) por cam
 Uso interno: abrir la app con `?historial3=1` (p. ej. `https://ad-guard-microapp.vercel.app/?historial3=1`). Después de responder se pide en sombra el historial de 3 años con el mismo formato que el de 18 meses y se registra en Sentry (flujo `usage`, mensaje "Meta: prueba de historial de 3 años") cuánto tardó, cuántas filas y campañas trajo, y en qué objetivos la ganadora de 3 años es otra que la de 18 meses (`winnersChanged`).
 
 Primera medición (2026-10-20, cuenta de prueba con 10 campañas en 3 años): 3 años tardó 1,4 s y 68 filas (1 página) contra 0,87 s y 21 filas de 12 meses; ambos consumieron 1% del límite de Meta. Con 3 años cambiaba la ganadora de mensajes por una campaña más antigua. El usuario no ve nada distinto.
+
+## 4e. Fase 2: menos que pensar (Meta)
+
+Ideas aprobadas el 2026-10-20 que no necesitan base de datos ni IA. Las de IA (revisar el anuncio antes de publicar, ideas de anuncio nuevo y "Pregúntale a AdsGuard") quedan para una fase 3 como suscripción. Maquetas: "AdsGuard Fase 2" (https://claude.ai/artifact/R8aGFLWzzP9CGxDbKJ3x3n) y "AdsGuard Nueva estructura" (https://claude.ai/artifact/G1WBTbFbFB6DBsR3smmvPC), privadas.
+
+### Hoy haz esto
+Pestaña Hoy (§8): una sola tarea a la vez, de la más urgente a la menos. Se arman en el navegador a partir de las alertas (`buildTasks` en `app/components/today.js`):
+1. Pausar cada campaña con alerta de Pausar (la de más gasto primero), con su botón.
+2. Pausar los anuncios o conjuntos de "Pausa solo esta parte".
+3. Revisar las campañas nuevas con problemas de configuración.
+4. Revisar las campañas con alertas de Revisar.
+
+Las dos primeras desaparecen al hacerlas. Las de revisar se marcan con "Ya lo hice" (se recuerda en el navegador, `adsguard.tareasHechas`). "Después" la manda al final de la lista mientras la página esté abierta. Las alertas de cuenta (A1, A2) se muestran siempre arriba de la tarea, no como tarea.
+
+### Revisión de campaña nueva
+`lib/setup-review-meta.js`. Campañas activas creadas hace menos de 7 días (`NEW_CAMPAIGN_DAYS`, por `created_time`), aunque Meta todavía esté aprendiendo. Revisa, sólo con los datos que existen:
+- **Objetivo**: ventas, contactos, mensajes o app → bien; tráfico, interacción o reconocimiento → aviso ("Meta va a buscar gente que vea o toque el anuncio, no que te compre").
+- **Ubicación** y **presupuesto diario** contra la ganadora del mismo objetivo (§4d): ubicación distinta → problema; presupuesto > 1,5× → problema.
+- **Píxel** (ventas y contactos): si ninguna campaña registró ventas ni contactos en 90 días → aviso.
+
+Una campaña nueva con problemas va al grupo "Para revisar" y genera una tarea en Hoy. La calibración registra `setupProblems`.
+
+### Cuánto ganas por venta
+Se pregunta en Protección y se guarda sólo en el navegador, por cuenta (`adsguard.gananciaPorVenta.{plataforma}.{cuenta}`); si cambia de dispositivo hay que volver a escribirlo. Con ese dato las alertas se reevalúan en el navegador y aparece M9 (§4b). Hoy invita a responderlo si hay campañas de ventas activas.
+
+### Palabras explicadas
+Las etiquetas de las cifras de cada campaña (gasto, compras, costo por…) se pueden tocar y abren una hoja con una explicación de una línea (`app/components/glossary.js`).
+
+### Pausar un anuncio
+Ver §4c, "Pausa solo esta parte".
+
+### Crear una igual
+Botón en cada ganadora de "Lo que funciona" y en "Lo que te funcionó antes": copia la campaña con sus conjuntos y anuncios **en pausa** (`POST /{campaign_id}/copies` con `deep_copy` y `status_option=PAUSED`; nombre con " (copia AdsGuard)"). Meta sólo copia de una vez campañas chicas; si es más grande devuelve un error, que se muestra al usuario. Después se ofrece abrirla en el Administrador de anuncios.
+
+### Fechas importantes
+`lib/key-dates.js`. Fechas del comercio en Chile: San Valentín, Día de la Madre (2.º domingo de mayo), Día del Padre (3.er domingo de junio), Día del Niño (2.º domingo de agosto), Fiestas Patrias, Halloween, Black Friday y Navidad. Se muestran las de los próximos 120 días (hasta 3) en "Lo que funciona" y la más cercana (≤ 45 días) en Hoy. Recomiendan crear la campaña 28 días antes (`LEAD_DAYS`). Si en el historial de 18 meses hay una campaña con palabras de esa fecha en el nombre (p. ej. "navidad") y con resultados, se cuenta cuántos trajo y a qué costo. CyberDay no está porque su fecha cambia cada año.
+
+### Guardias
+`lib/guards-meta.js`. Reglas automáticas que AdsGuard crea en la cuenta de Meta (`/act_{id}/adrules_library`), revisadas por Meta cada 30 minutos (`SEMI_HOURLY`) aunque el usuario no abra la app. Se reconocen por su nombre, que empieza con "AdsGuard ·"; nunca se tocan las reglas del usuario.
+
+| Guardia | Nivel | Condición (últimos 7 días) |
+|---|---|---|
+| Sin resultados | Campaña | gasto > monto elegido y 0 resultados |
+| Pierde plata | Campaña de ventas | gasto > 3× la ganancia por venta y costo por compra (`cost_per_purchase_fb`) > ganancia por venta |
+| Anuncio sin resultados | Anuncio | gasto > monto elegido y 0 resultados |
+
+El monto sugerido es el doble del costo por resultado típico de la cuenta (o 3 días de gasto) redondeado. Activar pide confirmación; desactivar borra la regla. Cambiar el monto con una guardia activa la vuelve a crear. Las reglas se leen junto con las campañas; si no se pueden leer, Protección lo avisa y el resto del panel funciona igual.
+
+### Tope de gasto
+`spend_cap` de la cuenta publicitaria: cuando lo gastado desde que se puso (o se reinició) llega al tope, Meta detiene todos los anuncios. Protección muestra cuánto va, cuánto queda y en cuántos días se llega al ritmo de los últimos 30 días; permite ponerlo, cambiarlo, empezar de cero (`spend_cap_action=reset`) o quitarlo (`spend_cap_action=delete`), siempre con confirmación. Los montos van en la unidad mínima de la moneda (`toMetaAmount`).
+
+Todas las acciones que escriben en Meta usan el permiso `ads_management`, que la app ya pide. Si Meta rechaza un cambio con un mensaje para el usuario (`error_user_msg`), se muestra ese mensaje.
 
 ## 5. Requisitos para producción (no son del cliente, son del operador de la app)
 
@@ -219,7 +272,7 @@ Primera medición (2026-10-20, cuenta de prueba con 10 campañas en 3 años): 3 
 
 1. Pantalla inicial: qué hace la app en una frase + botón "Conectar con Google Ads" + link "Ver demo".
 2. Tras conectar: si hay varias cuentas, elegir una (se recuerda en el navegador).
-3. Panel: resumen (gasto 30 días, resultados, alertas, "podrías ahorrar"), luego campañas ordenadas por severidad de alerta.
+3. Panel con 4 pestañas (§8): Hoy, Campañas, Lo que funciona y Protección.
 4. Cada alerta: título simple, explicación de una línea, botón "Pausar" con confirmación que repite el monto en juego.
 5. Errores traducidos: token no aprobado, cuenta sin permisos, sesión expirada → mensaje claro y qué hacer.
 
@@ -238,3 +291,16 @@ Ambos sólo escriben logs en Sentry (proyecto `ad-guard-microapp`); el usuario n
 - `campaignFlaggedPause`: si la campaña entera ya tenía alerta de pausar.
 
 La pregunta a responder tras 2 o 3 semanas con usuarios piloto: ¿en cuántas campañas que se ven "aceptables" el dinero se pierde en 1 o 2 partes? Si es frecuente, se agrega "Ver dónde se pierde el dinero" con pausa por parte; si casi todos tienen campañas de una sola parte, no vale la pena. En Meta ya se muestra como "Pausa solo esta parte" (§4c); el registro sirve para ajustar su umbral.
+
+## 8. Estructura del panel
+
+Diseño aprobado el 2026-10-20 (maqueta "AdsGuard Nueva estructura"). Cuatro pestañas en una barra fija abajo, al alcance del pulgar; cada una responde una sola pregunta:
+
+| Pestaña | Pregunta | Qué tiene |
+|---|---|---|
+| **Hoy** | ¿Qué hago ahora? | Gasto de 30 días, cuántas campañas hay para pausar, para revisar y que van bien, cuánto se ahorra pausando, alertas de cuenta, **una sola tarea** (§4e) y accesos a la próxima fecha, a la ganancia por venta y a Protección |
+| **Campañas** | ¿Cuál anda mal? | Lista agrupada en Pausar ya / Para revisar / Van bien / Pausadas, una línea por campaña con lo gastado y por qué está en ese grupo. Al tocar una se abre el detalle: alertas (las de Revisar plegadas bajo la de Pausar), cifras con palabras explicadas, revisión de campaña nueva y diagnóstico (§4c, §4d) |
+| **Lo que funciona** | ¿Qué repito? | Próximas fechas y mejores campañas con "Crear una campaña igual" |
+| **Protección** | ¿Estoy cubierto? | Ganancia por venta, guardias y tope de gasto |
+
+Reglas: una tarea a la vez; el detalle sólo al tocar; el botón donde está el problema; lo que se configura una vez queda aparte. El detalle de campaña usa `#campana-{id}` en la URL para que el gesto de "atrás" del celular vuelva a la lista. El número rojo sobre "Campañas" son las campañas para pausar. Con Google (hoy oculto) sólo hay Hoy y Campañas.

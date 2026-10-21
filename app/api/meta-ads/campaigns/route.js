@@ -1,5 +1,6 @@
 import { evaluateMetaAccount, findMetaWinners } from '@/lib/alerts-meta';
 import { logCalibration } from '@/lib/calibration';
+import { isNewCampaign } from '@/lib/setup-review-meta';
 import { flushLogsAfterResponse, reportError } from '@/lib/log';
 import {
   cleanAdAccountId,
@@ -39,11 +40,16 @@ export async function GET(request) {
     }
     let result = evaluateMetaAccount(campaigns, { currency: account.currency, context });
 
-    // "Lo que te funcionó antes": la configuración sólo se lee para las campañas que se comparan.
-    const compared = result.campaigns.filter((c) => c.diagnosis?.past);
-    if (compared.length) {
-      const ids = [...new Set(compared.flatMap((c) => [c.id, c.diagnosis.past.winnerId]))];
-      context.configs = await getMetaCampaignConfigs(accessToken, ids, account.currency);
+    // La configuración (presupuesto, ubicación, edad, formato) sólo se lee para las campañas que se
+    // comparan en "Lo que te funcionó antes", las mejores de cada objetivo ("Lo que funciona")
+    // y las campañas nuevas (revisión de campaña nueva).
+    const ids = new Set([
+      ...result.campaigns.filter((c) => c.diagnosis?.past).flatMap((c) => [c.id, c.diagnosis.past.winnerId]),
+      ...result.best.map((b) => b.id),
+      ...campaigns.filter((c) => isNewCampaign(c)).map((c) => c.id),
+    ]);
+    if (ids.size) {
+      context.configs = await getMetaCampaignConfigs(accessToken, [...ids], account.currency);
       result = evaluateMetaAccount(campaigns, { currency: account.currency, context });
     }
 
