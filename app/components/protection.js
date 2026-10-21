@@ -214,9 +214,12 @@ export function ProtectionTab({ evaluation, money, profit, onProfitChange, prote
           <Alert tone="warning">No pudimos leer las reglas automáticas de tu cuenta de Meta. Vuelve a intentarlo más tarde.</Alert>
         ) : (
           <>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-              <MoneyInput id="guard-amount" label="Gasto máximo sin resultados" value={amount} onChange={setAmount} />
-              <span className="text-sm text-muted">sin resultados en 7 días</span>
+            <div className="flex flex-col gap-1.5">
+              <p className="text-sm font-medium text-fg-2">¿Cuánto puede gastar una campaña o un anuncio sin traer nada?</p>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <MoneyInput id="guard-amount" label="Gasto máximo sin resultados" value={amount} onChange={setAmount} />
+                <span className="text-sm text-muted">en 7 días</span>
+              </div>
             </div>
             <ul className="rounded-xl border border-line divide-y divide-line">
               {GUARD_ROWS.map((row) => (
