@@ -231,7 +231,7 @@ export function Dashboard({ account, evaluation, actions, onChangeAccount, platf
           try {
             const res = await actions.copyCampaign(id);
             setCopies((prev) => ({ ...prev, [id]: { url: res?.url } }));
-            setToast({ tone: 'success', title: 'Creamos una copia en pausa', message: `"${name} (copia AdsGuard)". Cámbiale el anuncio en Meta y actívala.` });
+            setToast({ tone: 'success', title: 'Creamos una copia en pausa', message: `"${name} (copia AdSmart)". Cámbiale el anuncio en Meta y actívala.` });
           } catch (e) {
             setCopies((prev) => {
               const next = { ...prev };

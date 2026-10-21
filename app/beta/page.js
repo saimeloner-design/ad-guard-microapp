@@ -6,9 +6,9 @@ import styles from './landing.module.css';
 
 // Landing de la campaña de Instagram. La app sigue en "/"; aquí sólo se juntan registros para la beta.
 export const metadata = {
-  title: 'AdsGuard · Revisa tus anuncios gratis',
+  title: 'AdSmart · Revisa tus anuncios gratis',
   description:
-    'AdsGuard revisa tus campañas de Instagram y Facebook y te avisa en palabras simples cuáles gastan sin dar resultados.',
+    'AdSmart revisa tus campañas de Instagram y Facebook y te avisa en palabras simples cuáles gastan sin dar resultados.',
 };
 
 const PANEL_ALERTS = [
@@ -76,7 +76,7 @@ const TRUST = [
   {
     Icon: Hand,
     title: 'No cambiamos nada por ti',
-    text: 'AdsGuard solo te sugiere. Si quieres pausar una campaña, eres tú quien aprieta el botón.',
+    text: 'AdSmart solo te sugiere. Si quieres pausar una campaña, eres tú quien aprieta el botón.',
   },
   { Icon: Unplug, title: 'Te desconectas cuando quieras', text: 'Quitas el acceso desde Facebook en un par de clics.' },
 ];
@@ -91,7 +91,7 @@ const FAQ = [
   ],
   [
     '¿Pueden gastar mi dinero o cambiar mis anuncios?',
-    'No. AdsGuard no crea anuncios ni sube presupuestos. Solo puedes pausar una campaña tú mismo, con un botón y cuando lo decidas.',
+    'No. AdSmart no crea anuncios ni sube presupuestos. Solo puedes pausar una campaña tú mismo, con un botón y cuando lo decidas.',
   ],
 ];
 
@@ -115,7 +115,7 @@ export default function BetaLanding() {
             <span className={styles.logoMark}>
               <Wallet aria-hidden="true" />
             </span>
-            AdsGuard
+            AdSmart
           </div>
           <div className={styles.topRight}>
             <span className={styles.beta}>Beta gratuita</span>
@@ -132,7 +132,7 @@ export default function BetaLanding() {
                 Deja de pagar anuncios que <span className={styles.money}>no te traen clientes</span>
               </h1>
               <p className={styles.lede}>
-                AdsGuard revisa tus campañas de Instagram y Facebook y te avisa en palabras simples cuáles gastan sin dar
+                AdSmart revisa tus campañas de Instagram y Facebook y te avisa en palabras simples cuáles gastan sin dar
                 resultados. Sin planillas y sin ser experto.
               </p>
               <div className={styles.ctaRow}>
@@ -146,7 +146,7 @@ export default function BetaLanding() {
               </div>
             </div>
 
-            <div className={styles.panel} role="img" aria-label="Ejemplo del panel de AdsGuard con alertas de campañas de Meta">
+            <div className={styles.panel} role="img" aria-label="Ejemplo del panel de AdSmart con alertas de campañas de Meta">
               <div className={styles.panelHead}>
                 <b>Tus campañas · últimos 30 días</b>
                 <span className={styles.tag}>Ejemplo</span>
@@ -226,7 +226,7 @@ export default function BetaLanding() {
             <div>
               <p className={styles.eyebrow}>Para quién es</p>
               <h2>Hecho para quien maneja sus propios anuncios</h2>
-              <p className={styles.sub}>Si inviertes en Instagram y Facebook sin una agencia detrás, AdsGuard es para ti.</p>
+              <p className={styles.sub}>Si inviertes en Instagram y Facebook sin una agencia detrás, AdSmart es para ti.</p>
               <div className={styles.chips}>
                 {AUDIENCE.map((a) => (
                   <span key={a} className={styles.chip}>
@@ -285,8 +285,8 @@ export default function BetaLanding() {
 
       <footer className={styles.footer}>
         <div className={styles.wrap}>
-          <span>© 2026 AdsGuard</span>
-          <span>AdsGuard no está afiliado a Meta Platforms, Inc.</span>
+          <span>© 2026 AdSmart</span>
+          <span>AdSmart no está afiliado a Meta Platforms, Inc.</span>
         </div>
       </footer>
 

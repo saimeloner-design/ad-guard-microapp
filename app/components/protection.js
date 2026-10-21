@@ -186,7 +186,7 @@ export function ProtectionTab({ evaluation, money, profit, onProfitChange, prote
     <div className="flex flex-col gap-4 motion-safe:animate-fade-in">
       <div>
         <h2 className="text-xl font-semibold tracking-tight text-fg">Protección</h2>
-        <p className="text-sm text-muted mt-0.5">Se configura una vez. Después AdsGuard y Meta cuidan tu cuenta.</p>
+        <p className="text-sm text-muted mt-0.5">Se configura una vez. Después AdSmart y Meta cuidan tu cuenta.</p>
       </div>
 
       <Card
@@ -208,7 +208,7 @@ export function ProtectionTab({ evaluation, money, profit, onProfitChange, prote
         icon={ShieldCheck}
         tone="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
         title="Guardias"
-        text="Reglas que Meta revisa cada 30 minutos, aunque no abras AdsGuard. Cuando pausan algo, Meta te avisa en Facebook."
+        text="Reglas que Meta revisa cada 30 minutos, aunque no abras AdSmart. Cuando pausan algo, Meta te avisa en Facebook."
       >
         {!guards ? (
           <Alert tone="warning">No pudimos leer las reglas automáticas de tu cuenta de Meta. Vuelve a intentarlo más tarde.</Alert>

@@ -1,5 +1,7 @@
 # AdsGuard — Especificación
 
+Desde el 2026-10-21 la app se muestra como **AdSmart** (app, `/demo` y `/beta`). La URL, el repositorio, el código, los logs y los nombres de las guardias en Meta ("AdsGuard · …", que sirven para reconocerlas) siguen con el nombre anterior.
+
 ## 0. Prompt original (referencia)
 
 > quiero transofmar este mockup en realidad. necesito que me ayudes a conectar a los datos reales incialmente de google ads de manera que sea simple para el cliente, pensando que los clientes son usuarios basicos, emprendedores que hacen sus anuncios y no tienen a una persona especializada en ads. El objetivo incial es ahorrarles dinero entregando alertas para que detenga los anuncios que no estan rindiendo segun una serie de critieros que definiremos y que algunos de ellos ya estan definidos pero se pueden mejorar. quiero que este promp quede como referncia en un archivo de especificacion
@@ -238,7 +240,7 @@ Las etiquetas de las cifras de cada campaña (gasto, compras, costo por…) se p
 Ver §4c, "Pausa solo esta parte".
 
 ### Crear una igual
-Botón en cada ganadora de "Lo que funciona" y en "Lo que te funcionó antes": copia la campaña con sus conjuntos y anuncios **en pausa** (`POST /{campaign_id}/copies` con `deep_copy` y `status_option=PAUSED`; nombre con " (copia AdsGuard)"). Meta sólo copia de una vez campañas chicas; si es más grande devuelve un error, que se muestra al usuario. Después se ofrece abrirla en el Administrador de anuncios.
+Botón en cada ganadora de "Lo que funciona" y en "Lo que te funcionó antes": copia la campaña con sus conjuntos y anuncios **en pausa** (`POST /{campaign_id}/copies` con `deep_copy` y `status_option=PAUSED`; nombre con " (copia AdSmart)"). Meta sólo copia de una vez campañas chicas; si es más grande devuelve un error, que se muestra al usuario. Después se ofrece abrirla en el Administrador de anuncios.
 
 ### Fechas importantes
 `lib/key-dates.js`. Fechas del comercio en Chile: San Valentín, Día de la Madre (2.º domingo de mayo), Día del Padre (3.er domingo de junio), Día del Niño (2.º domingo de agosto), Fiestas Patrias, Halloween, Black Friday y Navidad. Se muestran las de los próximos 120 días (hasta 3) en "Lo que funciona" y la más cercana (≤ 45 días) en Hoy. Recomiendan crear la campaña 28 días antes (`LEAD_DAYS`). Si en el historial de 18 meses hay una campaña con palabras de esa fecha en el nombre (p. ej. "navidad") y con resultados, se cuenta cuántos trajo y a qué costo. CyberDay no está porque su fecha cambia cada año.

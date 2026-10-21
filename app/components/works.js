@@ -94,7 +94,7 @@ function WinnerCard({ best: b, money, copied, onCopy }) {
       )}
       {copied ? (
         <div className="text-[13px] text-fg-2 leading-relaxed">
-          Listo: creamos <span className="font-semibold text-fg">&quot;{b.name} (copia AdsGuard)&quot;</span> en pausa. Cámbiale el anuncio y actívala.
+          Listo: creamos <span className="font-semibold text-fg">&quot;{b.name} (copia AdSmart)&quot;</span> en pausa. Cámbiale el anuncio y actívala.
           {copied.url && (
             <a
               href={copied.url}

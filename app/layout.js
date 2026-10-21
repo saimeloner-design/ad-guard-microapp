@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "AdsGuard",
+  title: "AdSmart",
   description: "Control de Anuncios Express",
 };
 

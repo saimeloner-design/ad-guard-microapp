@@ -51,7 +51,7 @@ export function LeadForm() {
           <Check aria-hidden="true" />
         </span>
         <h3>¡Listo, ya estás en la lista!</h3>
-        <p>Te escribiremos en las próximas 24 horas con tu acceso a AdsGuard.</p>
+        <p>Te escribiremos en las próximas 24 horas con tu acceso a AdSmart.</p>
       </div>
     );
   }

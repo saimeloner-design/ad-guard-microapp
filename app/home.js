@@ -138,7 +138,7 @@ function Header({ subtitle, right }) {
             <Wallet className="size-5" aria-hidden="true" />
           </div>
           <div className="min-w-0">
-            <h1 className="text-[15px] font-semibold text-fg leading-tight">AdsGuard</h1>
+            <h1 className="text-[15px] font-semibold text-fg leading-tight">AdSmart</h1>
             <p className="text-xs text-muted truncate">{subtitle}</p>
           </div>
         </div>
