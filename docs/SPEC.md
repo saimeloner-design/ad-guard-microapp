@@ -292,6 +292,13 @@ Ambos sólo escriben logs en Sentry (proyecto `ad-guard-microapp`); el usuario n
 
 La pregunta a responder tras 2 o 3 semanas con usuarios piloto: ¿en cuántas campañas que se ven "aceptables" el dinero se pierde en 1 o 2 partes? Si es frecuente, se agrega "Ver dónde se pierde el dinero" con pausa por parte; si casi todos tienen campañas de una sola parte, no vale la pena. En Meta ya se muestra como "Pausa solo esta parte" (§4c); el registro sirve para ajustar su umbral.
 
+### Seguimiento de los intentos de login
+`lib/login-tracking.js` envuelve la ruta de next-auth. Cuando Facebook se queda pegado (p. ej. en su pantalla "¿Guardar información de inicio de sesión?" en el celular), el usuario nunca vuelve a AdsGuard y el servidor no se entera. Por eso se registran dos eventos en el flujo `login`, unidos por `attemptId`:
+- **"Intento de login: sale hacia el proveedor"** al tocar "Continuar con Meta" (POST `/api/auth/signin/facebook`), con `device` (celular, tablet, computador), `os`, `browser` e `inApp` (navegador dentro de Facebook, Instagram, WhatsApp…). Deja una cookie `adsguard_login` de 30 minutos.
+- **"Intento de login: vuelve del proveedor"** en `/api/auth/callback/facebook`, con `seconds` (cuánto tardó), `result` (ok, cancelado o el error) y `sameBrowser` (false si volvió sin la cookie: otro navegador, la app de Facebook o más de 30 minutos).
+
+Un `attemptId` que sale y no vuelve es un login trabado o abandonado. No se registran datos personales.
+
 ## 8. Estructura del panel
 
 Diseño aprobado el 2026-10-20 (maqueta "AdsGuard Nueva estructura"). Cuatro pestañas en una barra fija abajo, al alcance del pulgar; cada una responde una sola pregunta:
