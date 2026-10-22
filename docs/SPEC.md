@@ -348,9 +348,9 @@ Reglas: una tarea a la vez; el detalle sólo al tocar; el botón donde está el 
 Propuesta del 2026-10-22; decisiones tomadas el mismo día (ver «Decisiones»), falta aprobar la propuesta completa. Hasta ahora todo vive en la cookie de sesión, en el navegador o en logs de Sentry (§7). La base de datos sirve para analizar con consultas, y no con búsquedas de logs, cómo rinden las alertas y qué hace el usuario con ellas. Más adelante también para lo que hoy no se puede: resumen semanal, avisos y revisión programada.
 
 ### Proveedor
-- **Neon** (Postgres), plan gratuito, instalado desde el Marketplace de Vercel. Da 0,5 GB por proyecto, 100 CU-hora al mes y se apaga solo tras 5 min sin uso.
-- **Una rama por entorno**: `main` para producción y `develop` para desarrollo, cada una con su `DATABASE_URL` (Production / Preview limitada a `develop`). Se desactiva la rama automática por cada deploy de preview, porque no se usan (ver AGENTS.md).
-- **Driver `pg`** en el runtime de Node: `@sentry/nextjs` traza esas consultas solo y aparecen como spans en las trazas que ya hay. Sin ORM: SQL en `lib/db.js` y migraciones como archivos `.sql` numerados en `db/migrations/`.
+- **Neon** (Postgres), recurso `adsmart-db` (instalado el 2026-10-22), plan gratuito desde el Marketplace de Vercel, región `iad1` (junto a las funciones de Vercel). Da 1 GB por proyecto, 100 CU-hora al mes y se apaga solo tras 5 min sin uso. Sin Neon Auth: el login sigue con next-auth.
+- **Una rama por entorno**: producción usa la rama principal de Neon. En Preview la integración crea una rama `preview/<rama de git>` antes de cada deploy ("Create Database Branch For Deployment": sólo Preview), así que `develop` usa `preview/develop` y nunca toca los datos de producción. La integración pone las variables (`DATABASE_URL` con pool, `DATABASE_URL_UNPOOLED` directa, marcadas como sensibles); no se configuran a mano.
+- **Driver `pg`** en el runtime de Node, con `attachDatabasePool` de `@vercel/functions` y `DATABASE_URL` (con pool); las migraciones usan `DATABASE_URL_UNPOOLED`. Con `pg`, `@sentry/nextjs` traza esas consultas solo y aparecen como spans en las trazas que ya hay. Sin ORM: SQL en `lib/db.js` y migraciones como archivos `.sql` numerados en `db/migrations/`.
 
 ### Principios
 1. **Nada de tokens.** El token de Meta sigue sólo en el JWT (§5). Si algún día hace falta para tareas en segundo plano, se guarda cifrado y se decide aparte.
@@ -379,7 +379,7 @@ En `campaign_days` sólo van como columnas las métricas que se filtran o agrupa
 **Se quedan donde están**: los intentos de login (anónimos, antes de saber quién es el usuario) y el consumo de la API de Meta (flujo `usage`) siguen en Sentry. Los leads de `/beta` siguen en la Google Sheet. El tema y la cuenta elegida siguen en el navegador. La calibración y la sombra dejan de ir a Sentry.
 
 ### Espacio
-Una fila de `campaign_days` con su índice ocupa unos 0,7 KB y una de `shadow_days`, unos 0,2 KB por nivel. Con 50 cuentas de 20 campañas activas son unos 0,4 GB al año, lo que cabe en el plan gratuito durante la fase piloto. Retención:
+Una fila de `campaign_days` con su índice ocupa unos 0,7 KB y una de `shadow_days`, unos 0,2 KB por nivel. Con 50 cuentas de 20 campañas activas son unos 0,4 GB al año, lo que cabe en el 1 GB del plan gratuito. Retención:
 - `campaign_days` y `shadow_days`: 13 meses (permite comparar con el mismo mes del año anterior). Las filas más antiguas se borran con un cron de Vercel semanal.
 - `account_days` y `events`: sin límite, son pocas.
 - Al 70% del espacio se decide entre agregar por semana lo antiguo o pasar a Neon Launch (pago por uso).
