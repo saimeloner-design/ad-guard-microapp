@@ -627,6 +627,11 @@
   gap: 8px 20px;
   justify-content: space-between;
 }
+.footer a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 @media (min-width: 760px) {
   .footer {
     padding-block: 28px;

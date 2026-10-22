@@ -285,6 +285,11 @@ function Landing({ onDemo, notice }) {
         <ShieldCheck className="size-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
         Nunca cambiamos nada en tu cuenta sin que lo confirmes.
       </p>
+      <p className="mt-3 text-xs">
+        <a href="/privacidad" className="text-muted hover:text-fg underline underline-offset-4 decoration-line-strong">
+          Política de privacidad
+        </a>
+      </p>
     </div>
   );
 }

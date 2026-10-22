@@ -286,6 +286,7 @@ export default function BetaLanding() {
       <footer className={styles.footer}>
         <div className={styles.wrap}>
           <span>© 2026 AdSmart</span>
+          <a href="/privacidad">Política de privacidad</a>
           <span>AdSmart no está afiliado a Meta Platforms, Inc.</span>
         </div>
       </footer>

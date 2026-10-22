@@ -418,7 +418,7 @@ Hecho en `lib/data-deletion.js`. Meta llama a dos URLs con un `signed_request` f
 - **Qué se borra**: el usuario (con su email), y en cascada sus vínculos con cuentas, su ganancia por venta y sus eventos. También las cuentas que quedan sin nadie (sin vínculos, ajustes ni eventos de otro usuario), con sus registros diarios. Las cuentas compartidas con otro usuario se conservan.
 - **`/borrado-de-datos?codigo=`**: página pública con el estado del pedido. La tabla `deletion_requests` (migración `002_borrado.sql`) guarda sólo el código, el origen y las fechas, no a quién pertenecían los datos. El log del borrado (flujo `data-deletion`) tampoco lleva el ID del usuario.
 - **En la app de Meta** (Configuración → Básica / Inicio de sesión con Facebook): poner las dos URLs de producción, `https://ad-guard-microapp.vercel.app/api/meta/data-deletion` y `…/api/meta/deauthorize`.
-- Falta la política de privacidad: qué se guarda, para qué y cuánto tiempo (incluidos los logs de Sentry).
+- **Política de privacidad**: `/privacidad` (`app/privacidad/page.js`), enlazada desde la portada y el pie de `/beta`. Borrador del 2026-10-22: faltan el responsable y el correo de contacto (`RESPONSIBLE` y `CONTACT_EMAIL`) y que la revise quien responde por la app. Si cambia lo que se guarda (§9), hay que actualizarla. Su URL va en la app de Meta (Configuración → Básica → URL de la política de privacidad).
 
 ### Decisiones (2026-10-22)
 1. **Se guarda el email** en `users`, para escribirles a los testers y unir el uso de la app con la hoja de leads de `/beta`. Lo borran los endpoints de borrado de datos.
