@@ -369,7 +369,7 @@ Esquema en `db/migrations/001_inicial.sql`. Las claves son los IDs de Meta (sin 
 
 | Tabla | Clave | Qué guarda | Viene de | Estado |
 |---|---|---|---|---|
-| `users` | `meta_user_id` (`token.sub`) | `email`, `first_device`, `created_at`, `last_seen_at` | carga de campañas (`lib/users.js`) | hecho (falta `first_device`, va con el login) |
+| `users` | `meta_user_id` (`token.sub`) | `email`, `first_device` (celular, tablet o computador del primer login), `created_at`, `last_seen_at` | carga de campañas y login (`lib/users.js`) | hecho |
 | `ad_accounts` | `meta_account_id` | `currency`, `timezone` (`timezone_name` de Meta), `first_seen_at`, `last_seen_at` | carga de campañas | hecho |
 | `user_ad_accounts` | `(meta_user_id, meta_account_id)` | qué usuario ve qué cuenta (una cuenta puede tener varios usuarios) | carga de campañas | hecho |
 | `account_days` | `(meta_account_id, day)` | resumen de cuenta: `campaigns`, `active_count`, `alert_count`, `total_cost`, `potential_savings`, `account_alerts text[]` | `saveMetaCalibration` | hecho |
@@ -389,7 +389,7 @@ En `campaign_days` sólo van como columnas las métricas que se filtran o agrupa
 - `part_pause` / `part_enable`: anuncio o conjunto de "Pausa solo esta parte". `data`: `partId`, `level`, `alerts` de la campaña y `cost` de la parte.
 - `copy`: Crear una igual. `data`: `copiedCampaignId`.
 - `guard_create` / `guard_remove`, `spend_cap_set` / `spend_cap_reset` / `spend_cap_remove`: Protección. `data`: `key` de la guardia, `amount` y `currency`.
-- `login`: cada inicio de sesión con Meta (también guarda el email).
+- `login`: cada inicio de sesión con Meta (también guarda el email y, la primera vez, `first_device`). `data`: `device`, `os`, `browser` e `inApp` (navegador dentro de Facebook, Instagram…), con `deviceFrom` de `lib/login-tracking.js`.
 - `task_done`: Hoy haz esto (`POST /api/meta-ads/tasks`, guardado antes de responder). `data.key` es la tarea (`pausar:123`, `revisar:123:M1,M6`…) y las tareas hechas se leen de aquí (las de los últimos 90 días).
 
 El navegador manda `accountId`, `alerts` y `cost` junto a cada acción; el servidor los limpia y, si faltan, guarda el evento igual. Con esto se responde, por ejemplo: ¿qué alertas terminan en pausa?, ¿cuánto se ahorró?, ¿se reactivan campañas que la app mandó a pausar (posible alerta falsa)?
@@ -405,9 +405,10 @@ Tabla `demo_events` (migración `003_demo.sql`): qué hacen las visitas en `/dem
 
 ### Espacio
 Una fila de `campaign_days` con su índice ocupa unos 0,7 KB y una de `shadow_days`, unos 0,2 KB por nivel. Con 50 cuentas de 20 campañas activas son unos 0,4 GB al año, lo que cabe en el 1 GB del plan gratuito. Retención:
-- `campaign_days` y `shadow_days`: 13 meses (permite comparar con el mismo mes del año anterior). Las filas más antiguas se borran con un cron de Vercel semanal.
+- `campaign_days` y `shadow_days`: 13 meses (permite comparar con el mismo mes del año anterior).
 - `account_days` y `events`: sin límite, son pocas.
 - `demo_events`: 6 meses.
+- **Cron** (`vercel.json`): `GET /api/cron/retention` los lunes a las 07:00 UTC (plan Hobby: Vercel lo corre en algún momento de esa hora). Borra lo vencido (`lib/retention.js`) y registra cuántas filas en el flujo `retention`. Vercel manda `Authorization: Bearer $CRON_SECRET`; sin eso responde 401. `CRON_SECRET` está en Production y en Preview (`develop`), distinto en cada uno. Los crons de Vercel sólo corren en producción: la rama de `develop` no se limpia sola.
 - Al 70% del espacio se decide entre agregar por semana lo antiguo o pasar a Neon Launch (pago por uso).
 
 ### Borrado de datos (requisito de Meta)
