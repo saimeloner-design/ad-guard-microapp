@@ -6,9 +6,11 @@ import { CalendarDays, ChevronRight, Coins, PartyPopper, ShieldCheck } from 'luc
 import { AlertBox, levelOf } from './campaign';
 import { Alert, Button } from './ui';
 
-const DONE_KEY = 'adsguard.tareasHechas';
+// Demo y Google: las tareas hechas se recuerdan en este navegador. Meta: en la base de datos
+// (docs/SPEC.md §9); lo que hubiera aquí se sube una vez y se borra (app/home.js).
+export const DONE_KEY = 'adsguard.tareasHechas';
 
-function readDone() {
+export function readDone() {
   try {
     return new Set(JSON.parse(localStorage.getItem(DONE_KEY) || '[]'));
   } catch {
@@ -119,10 +121,12 @@ function RowCard({ icon: RowIcon, tone, title, text, onClick }) {
 }
 
 /** Hoy: cómo va la cuenta y una sola tarea a la vez. */
-export function TodayTab({ account, evaluation, actions, profit, protection, onOpen, onGo }) {
+/** `doneTasks` (Set) y `onTaskDone(id)`: tareas hechas guardadas fuera del navegador; sin ellas se usa localStorage. */
+export function TodayTab({ account, evaluation, actions, profit, protection, doneTasks, onTaskDone, onOpen, onGo }) {
   const { summary, campaigns, accountAlerts, dates = [] } = evaluation;
   const money = (v) => formatMoney(v, account.currency);
-  const [done, setDone] = useState(readDone);
+  const [localDone, setLocalDone] = useState(readDone);
+  const done = doneTasks ?? localDone;
   const [later, setLater] = useState([]);
 
   const tasks = useMemo(() => {
@@ -132,8 +136,9 @@ export function TodayTab({ account, evaluation, actions, profit, protection, onO
   const task = tasks[0];
 
   const markDone = (id) => {
-    const next = new Set(done).add(id);
-    setDone(next);
+    if (onTaskDone) return onTaskDone(id);
+    const next = new Set(localDone).add(id);
+    setLocalDone(next);
     storeDone(next);
   };
 

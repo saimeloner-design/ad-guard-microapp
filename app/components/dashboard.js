@@ -126,7 +126,19 @@ const detailFromHash = () => (typeof window === 'undefined' ? null : (window.loc
  * - protection(body) — guardias y tope de gasto (Meta)
  * `hiddenCount`: campañas antiguas sin gasto en 90 días que no se muestran (Meta).
  */
-export function Dashboard({ account, evaluation, actions, onChangeAccount, platform = 'google', hiddenCount = 0, profit, onProfitChange, protection }) {
+export function Dashboard({
+  account,
+  evaluation,
+  actions,
+  onChangeAccount,
+  platform = 'google',
+  hiddenCount = 0,
+  profit,
+  onProfitChange,
+  doneTasks,
+  onTaskDone,
+  protection,
+}) {
   const [tab, setTab] = useState('hoy');
   const [detailId, setDetailId] = useState(null);
   const [pending, setPending] = useState(null);
@@ -281,6 +293,8 @@ export function Dashboard({ account, evaluation, actions, onChangeAccount, platf
             actions={uiActions}
             profit={profit}
             protection={platform === 'meta' ? protection : null}
+            doneTasks={doneTasks}
+            onTaskDone={onTaskDone}
             onOpen={openCampaign}
             onGo={changeTab}
           />

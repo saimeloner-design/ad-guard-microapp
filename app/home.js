@@ -8,6 +8,7 @@ import { evaluateAccount } from '@/lib/alerts';
 import { evaluateMetaAccount } from '@/lib/alerts-meta';
 import { DEMO_ACCOUNT, DEMO_CAMPAIGNS, DEMO_CONTEXT } from '@/lib/demo-data';
 import { Dashboard } from './components/dashboard';
+import { DONE_KEY, readDone } from './components/today';
 import { GoogleLogo, MetaLogo } from './components/brand-icons';
 import { ThemeToggle } from './components/theme';
 import { Alert, Button, LoadingState, StateCard } from './components/ui';
@@ -32,6 +33,68 @@ function useProfit(accountKey) {
     [key]
   );
   return [profit, change];
+}
+
+const profitKey = (sourceId, accountId) => `adsguard.gananciaPorVenta.${sourceId}.${accountId}`;
+
+/**
+ * Meta: ganancia por venta y tareas de Hoy hechas, guardadas en la base de datos (docs/SPEC.md §9).
+ * La primera vez sube lo que hubiera en este navegador y lo borra de aquí. Si la base de datos
+ * no responde se sigue con el navegador, como antes. Google y la demo usan sólo el navegador.
+ */
+function useAccountSettings(source, account, post) {
+  const enabled = source.id === 'meta';
+  const [localProfit, setLocalProfit] = useProfit(`${source.id}.${account.id}`);
+  // null: cargando (o Google); false: la base de datos falló; si no, { profit, done }.
+  const [remote, setRemote] = useState(null);
+
+  useEffect(() => {
+    if (!enabled) return;
+    let cancelled = false;
+    (async () => {
+      const saved = await fetchJson(`${source.api}/settings?accountId=${encodeURIComponent(account.id)}`);
+      let profit = saved.profitPerSale ?? 0;
+      const done = new Set(saved.doneTasks);
+      const key = profitKey(source.id, account.id);
+      const stored = Number(readStoredAccount(key)) || 0;
+      if (stored > 0 && !profit) {
+        await post('/settings', { accountId: account.id, profitPerSale: stored });
+        profit = stored;
+      }
+      storeAccount(key, null);
+      const pending = [...readDone()].filter((id) => !done.has(id));
+      if (pending.length) {
+        await post('/tasks', { accountId: account.id, keys: pending });
+        pending.forEach((id) => done.add(id));
+      }
+      try {
+        localStorage.removeItem(DONE_KEY);
+      } catch {}
+      return { profit, done };
+    })().then(
+      (value) => !cancelled && setRemote(value),
+      () => !cancelled && setRemote(false)
+    );
+    return () => {
+      cancelled = true;
+    };
+    // `post` cambia en cada render; la carga sólo depende de la cuenta.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, source, account.id]);
+
+  if (!remote) return { profit: localProfit, setProfit: setLocalProfit };
+  return {
+    profit: remote.profit,
+    setProfit: (value) => {
+      setRemote((prev) => ({ ...prev, profit: value || 0 }));
+      post('/settings', { accountId: account.id, profitPerSale: value || 0 }).catch(() => {});
+    },
+    doneTasks: remote.done,
+    markTaskDone: (id) => {
+      setRemote((prev) => ({ ...prev, done: new Set(prev.done).add(id) }));
+      post('/tasks', { accountId: account.id, keys: [id] }).catch(() => {});
+    },
+  };
 }
 
 function storeAccount(key, id) {
@@ -353,7 +416,9 @@ function LiveView({ source, account, onChangeAccount }) {
   }).toString();
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
-  const [profit, setProfit] = useProfit(`${source.id}.${account.id}`);
+  const post = (path, body) =>
+    fetchJson(`${source.api}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const { profit, setProfit, doneTasks, markTaskDone } = useAccountSettings(source, account, post);
   const configCache = useRef(new Map());
 
   const load = useCallback(() => {
@@ -370,9 +435,6 @@ function LiveView({ source, account, onChangeAccount }) {
 
   // Se reevalúa en el navegador para que las alertas se actualicen al pausar, activar o cambiar la ganancia por venta.
   const evaluation = useMemo(() => data && source.evaluate(data, profit), [data, source, profit]);
-
-  const post = (path, body) =>
-    fetchJson(`${source.api}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
   const actions = {
     setStatus: async (campaign, status) => {
@@ -440,6 +502,8 @@ function LiveView({ source, account, onChangeAccount }) {
       hiddenCount={data.hiddenCount}
       profit={profit}
       onProfitChange={setProfit}
+      doneTasks={doneTasks}
+      onTaskDone={markTaskDone}
       protection={data.context?.protection}
     />
   );

@@ -66,6 +66,8 @@ Navegador ──► NextAuth (Google OAuth, scope adwords)
 | GET | `/api/meta-ads/campaigns?accountId=` | Igual que en Google, con métricas de Meta (ver `plan.md`). |
 | GET | `/api/meta-ads/campaigns/[campaignId]/config?currency=` | Configuración y texto de los anuncios de una campaña, al abrir esa sección (§4f). |
 | POST | `/api/meta-ads/campaigns/[campaignId]/status` | Body `{ status: "PAUSED" \| "ENABLED" }`. |
+| GET / POST | `/api/meta-ads/settings?accountId=` | Ganancia por venta y tareas de Hoy hechas de la cuenta (§9). POST `{ accountId, profitPerSale }`. |
+| POST | `/api/meta-ads/tasks` | Tareas de Hoy hechas: `{ accountId, keys: [...] }` (§9). |
 
 ## 4. Criterios de alerta
 
@@ -371,8 +373,8 @@ Esquema en `db/migrations/001_inicial.sql`. Las claves son los IDs de Meta (sin 
 | `account_days` | `(meta_account_id, day)` | resumen de cuenta: `campaigns`, `active_count`, `alert_count`, `total_cost`, `potential_savings`, `account_alerts text[]` | `saveMetaCalibration` | hecho |
 | `campaign_days` | `(meta_campaign_id, day)` | `meta_account_id`, `status`, `objective`, `result_type`, `cost`, `impressions`, `results`, `cost_per_result`, `learning`, `alerts text[]` y el resto de las métricas de calibración en `metrics jsonb` | `saveMetaCalibration` | hecho |
 | `shadow_days` | `(meta_campaign_id, day, level)` | `measured`, `campaign_alerts`, `campaign_flagged_pause`, `parts`, `parts_with_spend` y, si se mide, `wasted_parts`, `wasted_share`, `top1_wasted_share`, `top2_wasted_share` | `saveMetaWasteConcentration` | hecho |
-| `account_settings` | `(meta_user_id, meta_account_id)` | `profit_per_sale` (Cuánto ganas por venta) y `updated_at` | Protección y Hoy (hoy en el navegador) | tabla creada, falta conectarla |
-| `events` | `id` | `meta_user_id`, `meta_account_id`, `meta_campaign_id` (opcional), `type`, `at`, `data jsonb` | acciones del usuario (`lib/events.js`) | hecho, salvo `task_done` |
+| `account_settings` | `(meta_user_id, meta_account_id)` | `profit_per_sale` (Cuánto ganas por venta) y `updated_at` | `GET/POST /api/meta-ads/settings` | hecho |
+| `events` | `id` | `meta_user_id`, `meta_account_id`, `meta_campaign_id` (opcional), `type`, `at`, `data jsonb` | acciones del usuario (`lib/events.js`) | hecho |
 
 Todo se guarda en `GET /api/meta-ads/campaigns`, después de responder (`saveAfterResponse` en `lib/db.js`), en una sola transacción. El día es la fecha de hoy en la zona horaria de la cuenta; las métricas son las de 30 días que se ven en el panel.
 
@@ -386,7 +388,7 @@ En `campaign_days` sólo van como columnas las métricas que se filtran o agrupa
 - `copy`: Crear una igual. `data`: `copiedCampaignId`.
 - `guard_create` / `guard_remove`, `spend_cap_set` / `spend_cap_reset` / `spend_cap_remove`: Protección. `data`: `key` de la guardia, `amount` y `currency`.
 - `login`: cada inicio de sesión con Meta (también guarda el email).
-- `task_done`: Hoy haz esto; `data.key` es la tarea y las tareas hechas se leen de aquí. Pendiente, va con la ganancia por venta.
+- `task_done`: Hoy haz esto (`POST /api/meta-ads/tasks`, guardado antes de responder). `data.key` es la tarea (`pausar:123`, `revisar:123:M1,M6`…) y las tareas hechas se leen de aquí (las de los últimos 90 días).
 
 El navegador manda `accountId`, `alerts` y `cost` junto a cada acción; el servidor los limpia y, si faltan, guarda el evento igual. Con esto se responde, por ejemplo: ¿qué alertas terminan en pausa?, ¿cuánto se ahorró?, ¿se reactivan campañas que la app mandó a pausar (posible alerta falsa)?
 
@@ -405,5 +407,5 @@ Una fila de `campaign_days` con su índice ocupa unos 0,7 KB y una de `shadow_da
 
 ### Decisiones (2026-10-22)
 1. **Se guarda el email** en `users`, para escribirles a los testers y unir el uso de la app con la hoja de leads de `/beta`. Lo borran los endpoints de borrado de datos.
-2. **La ganancia por venta y las tareas hechas pasan a la base de datos**, para que no se pierdan al cambiar de dispositivo y se puedan analizar. La ganancia va en `account_settings` y las tareas hechas son eventos `task_done`. Al entrar por primera vez con base de datos, lo que haya en el navegador (`adsguard.gananciaPorVenta.{cuenta}`, `adsguard.tareasHechas`) se sube una vez y después se borra del navegador.
+2. **La ganancia por venta y las tareas hechas pasan a la base de datos**, para que no se pierdan al cambiar de dispositivo y se puedan analizar. La ganancia va en `account_settings` y las tareas hechas son eventos `task_done`. Al entrar por primera vez con base de datos, lo que haya en el navegador (`adsguard.gananciaPorVenta.{cuenta}`, `adsguard.tareasHechas`) se sube una vez y después se borra del navegador. Si la base de datos no responde, el panel sigue con lo del navegador, como antes. Google (oculto) y la demo siguen sólo en el navegador.
 3. **La calibración y la sombra van sólo a la base de datos**, sin período en paralelo. En Meta, `saveMetaCalibration` y `saveMetaWasteConcentration` reemplazan a los logs en Sentry, que queda sólo para los logs de funcionamiento y errores. Si la escritura falla, eso sí va a Sentry (flujo `db`). Google (oculto) sigue con `logCalibration` y `logWasteConcentration` en Sentry hasta que vuelva.
