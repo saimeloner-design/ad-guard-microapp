@@ -1,10 +1,11 @@
 import { evaluateMetaAccount, findMetaWinners } from '@/lib/alerts-meta';
-import { logCalibration } from '@/lib/calibration';
+import { saveMetaCalibration } from '@/lib/calibration';
+import { saveAfterResponse, today } from '@/lib/db';
 import { isNewCampaign } from '@/lib/setup-review-meta';
 import { flushLogsAfterResponse, reportError } from '@/lib/log';
 import {
   cleanAdAccountId,
-  getMetaAccessToken,
+  getMetaSession,
   getMetaBreakdownRows,
   getMetaCampaignConfigs,
   getMetaCampaigns,
@@ -12,7 +13,8 @@ import {
   metaErrorResponse,
   normalizeBreakdown,
 } from '@/lib/meta-ads';
-import { logWasteConcentration, runInShadow } from '@/lib/shadow';
+import { runInShadow, saveMetaWasteConcentration } from '@/lib/shadow';
+import { saveMetaVisit } from '@/lib/users';
 
 export async function GET(request) {
   flushLogsAfterResponse();
@@ -23,7 +25,7 @@ export async function GET(request) {
     const includeInactive = params.get('inactivas') === '1';
     // Uso interno: ?historial3=1 mide en sombra cuánto tarda y consume pedir 3 años de historial (flujo `usage`).
     const measureLongHistory = params.get('historial3') === '1';
-    const accessToken = await getMetaAccessToken(request);
+    const { accessToken, userId, email } = await getMetaSession(request);
     // El detalle por anuncio y conjunto se pide en paralelo. Si falla, el panel se muestra igual, sin "Pausa solo esta parte".
     const breakdownRows = getMetaBreakdownRows(accessToken, accountId).catch((error) => {
       reportError('meta-ads', 'No se pudo leer el detalle por conjunto y anuncio', error);
@@ -53,14 +55,13 @@ export async function GET(request) {
       result = evaluateMetaAccount(campaigns, { currency: account.currency, context });
     }
 
-    logCalibration('meta', account, result);
-    if (breakdown) {
-      runInShadow('meta', async () => {
-        for (const [level, children] of Object.entries(breakdown)) {
-          logWasteConcentration({ platform: 'meta', level, accountId, evaluation: result, children, isMeasured: (c) => c.measured });
-        }
-      });
-    }
+    // Calibración y análisis en sombra (docs/SPEC.md §7 y §9), después de responder.
+    saveAfterResponse('campañas de Meta', async (db) => {
+      const day = today(account.timezone);
+      await saveMetaVisit(db, { userId, email, account });
+      await saveMetaCalibration(db, { accountId, day, evaluation: result });
+      if (breakdown) await saveMetaWasteConcentration(db, { accountId, day, evaluation: result, breakdown });
+    });
 
     if (measureLongHistory) {
       runInShadow('meta-historial-3-anios', () =>

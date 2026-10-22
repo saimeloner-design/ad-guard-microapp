@@ -313,7 +313,7 @@ Hoy ambos escriben logs en Sentry (proyecto `ad-guard-microapp`); el usuario no 
 
 **Consumo de Meta** (flujo `usage`): cada respuesta de Meta registra el consumo de sus límites que viene en los encabezados (`x-app-usage`, `x-ad-account-usage`, `x-business-use-case-usage`, en % del límite), y cada listado completo registra páginas, filas, bytes, duración y el mayor consumo visto. Sirve para saber cuánto "gasta" cada consulta antes de agregar otras.
 
-**Calibración** (`lib/calibration.js`, flujo `calibration`): cada vez que se cargan las campañas se registra, por campaña, sus métricas (CTR, frecuencia, visitas/clics, costo por resultado, comparación con la referencia, ROAS) y qué alertas salieron. Con varias cuentas reales se mira la distribución y se ajustan los umbrales; por ejemplo, alertar sólo al 10% peor. Como cada recarga vuelve a registrar, al analizar hay que quedarse con un registro por campaña y día.
+**Calibración** (`lib/calibration.js`; Meta en la tabla `campaign_days`, §9; Google en el flujo `calibration`): cada vez que se cargan las campañas se registra, por campaña, sus métricas (CTR, frecuencia, visitas/clics, costo por resultado, comparación con la referencia, ROAS) y qué alertas salieron. Con varias cuentas reales se mira la distribución y se ajustan los umbrales; por ejemplo, alertar sólo al 10% peor. En la base de datos cada recarga sobrescribe el registro del día, así que hay uno por campaña y día.
 
 **Análisis en sombra** (`lib/shadow.js`, flujo `shadow`): después de responder, con el gasto y los resultados por grupo de anuncios, anuncio y palabra clave (Google) o por conjunto y anuncio (Meta; en Meta es el mismo detalle que usa el diagnóstico, §4c), se registra por campaña:
 - `partsWithSpend`: cuántas partes gastaron (¿la mayoría tiene una sola?);
@@ -350,7 +350,7 @@ Propuesta del 2026-10-22; decisiones tomadas el mismo día (ver «Decisiones»),
 ### Proveedor
 - **Neon** (Postgres), recurso `adsmart-db` (instalado el 2026-10-22), plan gratuito desde el Marketplace de Vercel, región `iad1` (junto a las funciones de Vercel). Da 1 GB por proyecto, 100 CU-hora al mes y se apaga solo tras 5 min sin uso. Sin Neon Auth: el login sigue con next-auth.
 - **Una rama por entorno**: producción usa la rama principal de Neon. En Preview la integración crea una rama `preview/<rama de git>` antes de cada deploy ("Create Database Branch For Deployment": sólo Preview), así que `develop` usa `preview/develop` y nunca toca los datos de producción. La integración pone las variables (`DATABASE_URL` con pool, `DATABASE_URL_UNPOOLED` directa, marcadas como sensibles); no se configuran a mano.
-- **Driver `pg`** en el runtime de Node, con `attachDatabasePool` de `@vercel/functions` y `DATABASE_URL` (con pool); las migraciones usan `DATABASE_URL_UNPOOLED`. Con `pg`, `@sentry/nextjs` traza esas consultas solo y aparecen como spans en las trazas que ya hay. Sin ORM: SQL en `lib/db.js` y migraciones como archivos `.sql` numerados en `db/migrations/`.
+- **Driver `pg`** en el runtime de Node, con `attachDatabasePool` de `@vercel/functions` y `DATABASE_URL` (con pool); las migraciones usan `DATABASE_URL_UNPOOLED`. Con `pg`, `@sentry/nextjs` traza esas consultas solo y aparecen como spans en las trazas que ya hay. Sin ORM: SQL directo junto a cada módulo (`lib/calibration.js`, `lib/shadow.js`, `lib/users.js`), conexión en `lib/db.js` y migraciones como archivos `.sql` numerados en `db/migrations/`.
 
 ### Principios
 1. **Nada de tokens.** El token de Meta sigue sólo en el JWT (§5). Si algún día hace falta para tareas en segundo plano, se guarda cifrado y se decide aparte.
@@ -361,16 +361,22 @@ Propuesta del 2026-10-22; decisiones tomadas el mismo día (ver «Decisiones»),
 
 ### Tablas
 
-| Tabla | Clave | Qué guarda | Viene de |
-|---|---|---|---|
-| `users` | `id` (uuid); `meta_user_id` único | `email`, `created_at`, `last_seen_at`, `device` del primer login | login (`lib/auth.js`) |
-| `ad_accounts` | `id` (uuid); `meta_account_id` único | `currency`, `timezone`, `first_seen_at`, `last_seen_at` | `/api/meta-ads/accounts` |
-| `user_ad_accounts` | `(user_id, account_id)` | qué usuario ve qué cuenta (una cuenta puede tener varios usuarios) | `/api/meta-ads/accounts` |
-| `account_days` | `(account_id, day)` | resumen de cuenta: `campaigns`, `active_count`, `alert_count`, `total_cost`, `potential_savings`, `account_alerts text[]` | `logCalibration` |
-| `campaign_days` | `(meta_campaign_id, day)` | `account_id`, `status`, `objective`, `result_type`, `cost`, `impressions`, `results`, `cost_per_result`, `learning`, `alerts text[]` y el resto de las métricas de calibración en `metrics jsonb` | `logCalibration` |
-| `shadow_days` | `(meta_campaign_id, day, level)` | `measured`, `parts`, `parts_with_spend`, `wasted_parts`, `wasted_share`, `top1_wasted_share`, `top2_wasted_share`, `campaign_flagged_pause` | `logWasteConcentration` |
-| `account_settings` | `(user_id, account_id)` | `profit_per_sale` (Cuánto ganas por venta) y `updated_at` | Protección y Hoy (hoy en el navegador) |
-| `events` | `id` | `user_id`, `account_id`, `meta_campaign_id` (opcional), `type`, `at`, `data jsonb` | acciones del usuario |
+Esquema en `db/migrations/001_inicial.sql`. Las claves son los IDs de Meta (sin `act_` en las cuentas): cada guardado es un upsert directo, sin buscar antes un ID interno. Todo lo de un usuario o una cuenta se borra en cascada.
+
+| Tabla | Clave | Qué guarda | Viene de | Estado |
+|---|---|---|---|---|
+| `users` | `meta_user_id` (`token.sub`) | `email`, `first_device`, `created_at`, `last_seen_at` | carga de campañas (`lib/users.js`) | hecho (falta `first_device`, va con el login) |
+| `ad_accounts` | `meta_account_id` | `currency`, `timezone` (`timezone_name` de Meta), `first_seen_at`, `last_seen_at` | carga de campañas | hecho |
+| `user_ad_accounts` | `(meta_user_id, meta_account_id)` | qué usuario ve qué cuenta (una cuenta puede tener varios usuarios) | carga de campañas | hecho |
+| `account_days` | `(meta_account_id, day)` | resumen de cuenta: `campaigns`, `active_count`, `alert_count`, `total_cost`, `potential_savings`, `account_alerts text[]` | `saveMetaCalibration` | hecho |
+| `campaign_days` | `(meta_campaign_id, day)` | `meta_account_id`, `status`, `objective`, `result_type`, `cost`, `impressions`, `results`, `cost_per_result`, `learning`, `alerts text[]` y el resto de las métricas de calibración en `metrics jsonb` | `saveMetaCalibration` | hecho |
+| `shadow_days` | `(meta_campaign_id, day, level)` | `measured`, `campaign_alerts`, `campaign_flagged_pause`, `parts`, `parts_with_spend` y, si se mide, `wasted_parts`, `wasted_share`, `top1_wasted_share`, `top2_wasted_share` | `saveMetaWasteConcentration` | hecho |
+| `account_settings` | `(meta_user_id, meta_account_id)` | `profit_per_sale` (Cuánto ganas por venta) y `updated_at` | Protección y Hoy (hoy en el navegador) | tabla creada, falta conectarla |
+| `events` | `id` | `meta_user_id`, `meta_account_id`, `meta_campaign_id` (opcional), `type`, `at`, `data jsonb` | acciones del usuario | tabla creada, falta conectarla |
+
+Todo se guarda en `GET /api/meta-ads/campaigns`, después de responder (`saveAfterResponse` en `lib/db.js`), en una sola transacción. El día es la fecha de hoy en la zona horaria de la cuenta; las métricas son las de 30 días que se ven en el panel.
+
+**Migraciones**: `npm run build` corre `scripts/migrate.mjs` antes de `next build`. Aplica en orden los `.sql` de `db/migrations/` que falten (registrados en `schema_migrations`), cada uno en una transacción y con un candado para que dos builds no migren a la vez. En Vercel cada entorno migra su propia rama: producción la principal y `develop` la suya. Si falla, el deploy falla y queda el anterior. Sólo cambios compatibles hacia atrás (agregar tablas o columnas), porque la migración corre antes de que el deploy nuevo reemplace al anterior.
 
 En `campaign_days` sólo van como columnas las métricas que se filtran o agrupan. El resto va en `metrics jsonb`, para poder agregar métricas sin migración.
 
@@ -392,4 +398,4 @@ Una fila de `campaign_days` con su índice ocupa unos 0,7 KB y una de `shadow_da
 ### Decisiones (2026-10-22)
 1. **Se guarda el email** en `users`, para escribirles a los testers y unir el uso de la app con la hoja de leads de `/beta`. Lo borran los endpoints de borrado de datos.
 2. **La ganancia por venta y las tareas hechas pasan a la base de datos**, para que no se pierdan al cambiar de dispositivo y se puedan analizar. La ganancia va en `account_settings` y las tareas hechas son eventos `task_done`. Al entrar por primera vez con base de datos, lo que haya en el navegador (`adsguard.gananciaPorVenta.{cuenta}`, `adsguard.tareasHechas`) se sube una vez y después se borra del navegador.
-3. **La calibración y la sombra van sólo a la base de datos**, sin período en paralelo. `logCalibration` y `logWasteConcentration` dejan de escribir en Sentry, que queda sólo para los logs de funcionamiento y errores. Si la escritura falla, eso sí va a Sentry (flujo `db`).
+3. **La calibración y la sombra van sólo a la base de datos**, sin período en paralelo. En Meta, `saveMetaCalibration` y `saveMetaWasteConcentration` reemplazan a los logs en Sentry, que queda sólo para los logs de funcionamiento y errores. Si la escritura falla, eso sí va a Sentry (flujo `db`). Google (oculto) sigue con `logCalibration` y `logWasteConcentration` en Sentry hasta que vuelva.
