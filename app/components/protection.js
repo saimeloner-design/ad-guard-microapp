@@ -2,19 +2,20 @@
 
 import { useState } from 'react';
 import { roundAmount } from '@/lib/guards-meta';
-import { Coins, ShieldCheck, Wallet } from 'lucide-react';
+import { ChevronDown, Coins, ShieldCheck, Wallet } from 'lucide-react';
 import { Alert, Button } from './ui';
 
 const digits = (s) => Number(String(s).replace(/\D/g, '')) || 0;
 const grouped = (n) => (n ? n.toLocaleString('es-CL') : '');
 
-function MoneyInput({ id, value, onChange, label }) {
+function MoneyInput({ id, value, onChange, label, size = 'lg' }) {
+  const text = size === 'lg' ? 'text-lg' : 'text-[15px]';
   return (
     <div className="flex items-center gap-2">
       <label htmlFor={id} className="sr-only">
         {label}
       </label>
-      <span className="text-lg font-semibold text-muted" aria-hidden="true">
+      <span className={`${text} font-semibold text-muted`} aria-hidden="true">
         $
       </span>
       <input
@@ -24,7 +25,7 @@ function MoneyInput({ id, value, onChange, label }) {
         value={grouped(value)}
         placeholder="0"
         onChange={(e) => onChange(digits(e.target.value))}
-        className="w-36 min-w-0 rounded-xl border border-line bg-surface-2 px-3 py-2 text-lg font-semibold tabular-nums text-fg focus:outline-2 focus:outline-indigo-500"
+        className={`${size === 'lg' ? 'w-36 py-2' : 'w-28 py-1.5'} min-w-0 rounded-xl border border-line bg-surface-2 px-3 ${text} font-semibold tabular-nums text-fg focus:outline-2 focus:outline-indigo-500`}
       />
     </div>
   );
@@ -63,6 +64,35 @@ function Switch({ checked, disabled, busy, onChange, labelledBy }) {
   );
 }
 
+/** Etiqueta de estado de un grupo de guardias: se ve sin abrirlo. */
+function GuardStatus({ on, total }) {
+  const label = on === 0 ? (total === 1 ? 'Apagada' : 'Apagadas') : on === total ? (total === 1 ? 'Activa' : 'Activas') : `${on} de ${total} activa`;
+  return (
+    <span
+      className={`text-[11px] font-semibold px-2 py-0.5 rounded-full whitespace-nowrap ${on ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-surface-3 text-muted'}`}
+    >
+      {label}
+    </span>
+  );
+}
+
+/** Problema que evitan las guardias: título y resumen a la vista, el resto plegado. */
+function GuardGroup({ title, summary, on, total, children }) {
+  return (
+    <details className="group border-t border-line">
+      <summary className="list-none [&::-webkit-details-marker]:hidden cursor-pointer grid grid-cols-[1fr_auto_16px] gap-2.5 items-center px-4 py-3 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-500">
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold text-fg">{title}</span>
+          <span className="block text-[13px] text-muted leading-snug mt-0.5">{summary}</span>
+        </span>
+        <GuardStatus on={on} total={total} />
+        <ChevronDown className="size-4 text-muted transition-transform motion-reduce:transition-none group-open:rotate-180" aria-hidden="true" />
+      </summary>
+      <div className="px-4 pb-4 flex flex-col gap-3">{children}</div>
+    </details>
+  );
+}
+
 /** Monto sugerido para las guardias: el doble del costo por resultado típico, o 3 días de gasto. */
 function suggestedAmount(campaigns, totalCost) {
   const costs = campaigns.filter((c) => c.costPerResult > 0 && c.resultType !== 'reach').map((c) => c.costPerResult).sort((a, b) => a - b);
@@ -98,8 +128,8 @@ export function ProtectionTab({ evaluation, money, profit, onProfitChange, prote
   const GUARD_ROWS = [
     {
       key: 'noResults',
-      title: `Pausar campañas que gastan ${money(amount)} en 7 días sin ningún resultado`,
-      text: 'Lo mismo que te avisamos con "Gasta dinero sin traer resultados", pero sin esperar a que entres.',
+      title: 'Pausar la campaña completa',
+      text: 'Cuando nada de la campaña funciona.',
       values: { amount },
       ready: amount > 0,
       confirmText: `Meta va a pausar sola cualquier campaña que gaste más de ${money(amount)} en 7 días sin conseguir ningún resultado.`,
@@ -107,23 +137,57 @@ export function ProtectionTab({ evaluation, money, profit, onProfitChange, prote
     },
     {
       key: 'loss',
-      title: 'Pausar campañas de ventas donde cada venta cuesta más de lo que ganas',
-      text: profit ? `Usa tu ganancia: ${money(profit)} por venta.` : 'Primero dinos cuánto ganas por venta, arriba.',
+      title: 'Pausar la campaña de ventas',
+      text: profit ? `Si cada venta te cuesta en anuncios más de lo que ganas (${money(profit)}).` : 'Primero dinos cuánto ganas por venta, arriba.',
       values: { profit },
       ready: profit > 0,
-      confirmText: `Meta va a pausar sola las campañas de ventas en las que cada venta cueste más de ${money(profit)} en los últimos 7 días.`,
+      confirmText: `Meta va a pausar sola las campañas de ventas en las que cada venta cueste más de ${money(profit)} en los últimos 7 días, cuando ya hayan gastado más de ${money(3 * profit)}.`,
       stale: guards?.loss?.active && profit > 0 && guards.loss.profit !== profit,
     },
     {
       key: 'adNoResults',
-      title: `Pausar anuncios que gastan ${money(amount)} en 7 días sin ningún resultado`,
-      text: 'Pausa sólo el anuncio que no funciona y deja andando el resto de la campaña.',
+      title: 'Pausar solo el anuncio que falla',
+      text: 'Cuando otros anuncios de la campaña sí traen resultados.',
       values: { amount },
       ready: amount > 0,
-      confirmText: `Meta va a pausar solo cualquier anuncio que gaste más de ${money(amount)} en 7 días sin conseguir ningún resultado.`,
+      confirmText: `Meta va a pausar solo cualquier anuncio que gaste más de ${money(amount)} en 7 días sin conseguir ningún resultado. El resto de la campaña sigue andando.`,
       stale: guards?.adNoResults?.active && guards.adNoResults.amount !== amount,
     },
   ];
+
+  // Función y no componente: si se redefiniera como componente en cada render, el interruptor perdería el foco.
+  const guardList = (rows) => (
+    <ul className="rounded-xl border border-line divide-y divide-line">
+      {rows.map((row) => (
+        <li key={row.key} className="flex items-center gap-3 px-3 py-2.5">
+          <div className="min-w-0 flex-1">
+            <p id={`guard-${row.key}`} className="text-[13px] font-semibold text-fg leading-snug">
+              {row.title}
+            </p>
+            <p className="text-xs text-muted leading-snug mt-0.5">{row.text}</p>
+            {row.stale && (
+              <Button
+                size="sm"
+                variant="secondary"
+                className="mt-2"
+                loading={busy === row.key}
+                onClick={() => run(row.key, { action: 'guard-on', key: row.key, ...row.values }, 'Guardia actualizada')}
+              >
+                Actualizar con este monto
+              </Button>
+            )}
+          </div>
+          <Switch
+            checked={Boolean(guards[row.key]?.active)}
+            disabled={!row.ready && !guards[row.key]?.active}
+            busy={busy === row.key}
+            onChange={(on) => toggleGuard(row, on)}
+            labelledBy={`guard-${row.key}`}
+          />
+        </li>
+      ))}
+    </ul>
+  );
 
   const toggleGuard = (row, on) => {
     if (!on) return run(row.key, { action: 'guard-off', key: row.key }, 'Guardia desactivada');
@@ -204,56 +268,75 @@ export function ProtectionTab({ evaluation, money, profit, onProfitChange, prote
         </p>
       </Card>
 
-      <Card
-        icon={ShieldCheck}
-        tone="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
-        title="Guardias"
-        text="Reglas que Meta revisa cada 30 minutos, aunque no abras AdSmart. Cuando pausan algo, Meta te avisa en Facebook."
-      >
+      <section className="bg-surface border border-line rounded-2xl shadow-xs overflow-hidden">
+        <div className="p-4 grid grid-cols-[36px_1fr] gap-3 items-start">
+          <span className="size-9 grid place-items-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
+            <ShieldCheck className="size-[18px]" aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <h3 className="text-base font-semibold text-fg">Guardias</h3>
+            <p className="text-[13px] text-muted leading-snug mt-0.5">Meta pausa sola lo que te hace perder plata, aunque no abras AdSmart.</p>
+          </div>
+        </div>
         {!guards ? (
-          <Alert tone="warning">No pudimos leer las reglas automáticas de tu cuenta de Meta. Vuelve a intentarlo más tarde.</Alert>
+          <div className="px-4 pb-4">
+            <Alert tone="warning">No pudimos leer las reglas automáticas de tu cuenta de Meta. Vuelve a intentarlo más tarde.</Alert>
+          </div>
         ) : (
           <>
-            <div className="flex flex-col gap-1.5">
-              <p className="text-sm font-medium text-fg-2">¿Cuánto puede gastar una campaña o un anuncio sin traer nada?</p>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                <MoneyInput id="guard-amount" label="Gasto máximo sin resultados" value={amount} onChange={setAmount} />
-                <span className="text-sm text-muted">en 7 días</span>
+            <GuardGroup
+              title="Gasta sin traer resultados"
+              summary={amount > 0 ? `Más de ${money(amount)} en 7 días sin ninguno` : 'Elige desde qué gasto pausar'}
+              on={['noResults', 'adNoResults'].filter((k) => guards[k]?.active).length}
+              total={2}
+            >
+              <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2">
+                <label htmlFor="guard-amount" className="text-[13px] font-semibold text-fg-2">
+                  Pausar desde
+                </label>
+                <MoneyInput id="guard-amount" label="Gasto máximo sin resultados" value={amount} onChange={setAmount} size="md" />
+                <span className="text-[13px] text-muted">en 7 días</span>
               </div>
-            </div>
-            <ul className="rounded-xl border border-line divide-y divide-line">
-              {GUARD_ROWS.map((row) => (
-                <li key={row.key} className="flex items-center gap-3 px-3 py-3">
-                  <div className="min-w-0 flex-1">
-                    <p id={`guard-${row.key}`} className="text-sm font-semibold text-fg leading-snug">
-                      {row.title}
-                    </p>
-                    <p className="text-xs text-muted leading-snug mt-0.5">{row.text}</p>
-                    {row.stale && (
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="mt-2"
-                        loading={busy === row.key}
-                        onClick={() => run(row.key, { action: 'guard-on', key: row.key, ...row.values }, 'Guardia actualizada')}
-                      >
-                        Actualizar con este monto
-                      </Button>
-                    )}
-                  </div>
-                  <Switch
-                    checked={Boolean(guards[row.key]?.active)}
-                    disabled={!row.ready && !guards[row.key]?.active}
-                    busy={busy === row.key}
-                    onChange={(on) => toggleGuard(row, on)}
-                    labelledBy={`guard-${row.key}`}
-                  />
-                </li>
-              ))}
-            </ul>
+              {guardList(GUARD_ROWS.filter((r) => r.key !== 'loss'))}
+              <p className="text-xs text-muted leading-relaxed">El monto se mide en cada campaña o anuncio por separado. Puedes activar las dos.</p>
+            </GuardGroup>
+            <GuardGroup
+              title="Ventas que te hacen perder"
+              summary={profit ? `Cada venta cuesta más de ${money(profit)}` : 'Necesita tu ganancia por venta'}
+              on={guards.loss?.active ? 1 : 0}
+              total={1}
+            >
+              {guardList(GUARD_ROWS.filter((r) => r.key === 'loss'))}
+              <p className="text-xs text-muted leading-relaxed">
+                {profit > 0 && `Espera a que la campaña gaste más de ${money(3 * profit)} en la semana (3 ventas) para no pausar por una venta cara aislada. `}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const input = document.getElementById('profit');
+                    input?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    input?.focus({ preventScroll: true });
+                  }}
+                  className="font-semibold text-indigo-600 dark:text-indigo-300 hover:underline cursor-pointer rounded focus-visible:outline-2 focus-visible:outline-indigo-500"
+                >
+                  {profit ? 'Cambiar ganancia' : 'Escribir mi ganancia por venta'}
+                </button>
+              </p>
+            </GuardGroup>
+            <details className="group border-t border-line bg-surface-2">
+              <summary className="list-none [&::-webkit-details-marker]:hidden cursor-pointer grid grid-cols-[1fr_16px] gap-2.5 items-center px-4 py-3 text-[13px] text-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-500">
+                ¿Cómo funcionan?
+                <ChevronDown className="size-4 transition-transform motion-reduce:transition-none group-open:rotate-180" aria-hidden="true" />
+              </summary>
+              <ol className="list-decimal pl-8 pr-4 pb-3 flex flex-col gap-1 text-xs text-fg-2 leading-relaxed">
+                <li>Al activarla, creamos una regla en tu cuenta de Meta.</li>
+                <li>Meta la revisa cada 30 minutos mirando los últimos 7 días.</li>
+                <li>Si se cumple, Meta pausa y te avisa en Facebook.</li>
+                <li>Puedes volver a activar lo pausado; si sigue igual, se pausa otra vez.</li>
+              </ol>
+            </details>
           </>
         )}
-      </Card>
+      </section>
 
       <Card
         icon={Wallet}

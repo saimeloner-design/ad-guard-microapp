@@ -255,6 +255,11 @@ Botón en cada ganadora de "Lo que funciona" y en "Lo que te funcionó antes": c
 | Pierde plata | Campaña de ventas | gasto > 3× la ganancia por venta y costo por compra (`cost_per_purchase_fb`) > ganancia por venta |
 | Anuncio sin resultados | Anuncio | gasto > monto elegido y 0 resultados |
 
+En Protección se muestran agrupadas por el problema que evitan, en una sola tarjeta con todo plegado (maqueta "AdSmart Guardias", variante C, https://claude.ai/artifact/3phB1tGJV92cgx9QXU5e4G, privada, aprobada el 2026-10-22). Cada grupo muestra a la vista su resumen y una etiqueta de estado ("1 de 2 activa", "Apagada"):
+- **Gasta sin traer resultados**: el monto y dos interruptores, "Pausar la campaña completa" (cuando nada de la campaña funciona) y "Pausar solo el anuncio que falla" (cuando otros anuncios sí traen resultados). Se complementan: como la de campaña mide el gasto total, salta primero cuando nada funciona; la de anuncio sirve cuando la campaña sí trae resultados. El monto se mide en cada campaña o anuncio por separado.
+- **Ventas que te hacen perder**: un interruptor, con la espera de 3 ventas explicada y un acceso a la ganancia por venta.
+- **¿Cómo funcionan?**: se crea una regla en Meta, Meta la revisa cada 30 minutos mirando 7 días, pausa y avisa en Facebook; si el usuario reactiva lo pausado y sigue igual, se pausa otra vez.
+
 El monto sugerido es el doble del costo por resultado típico de la cuenta (o 3 días de gasto) redondeado. Activar pide confirmación; desactivar borra la regla. Cambiar el monto con una guardia activa la vuelve a crear. Las reglas se leen junto con las campañas; si no se pueden leer, Protección lo avisa y el resto del panel funciona igual.
 
 ### Tope de gasto
