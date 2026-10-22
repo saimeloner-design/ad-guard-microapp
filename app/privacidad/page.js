@@ -1,9 +1,9 @@
 import Link from 'next/link';
 
 // Política de privacidad (docs/SPEC.md §9). Meta la exige para revisar la app.
-// BORRADOR: falta completar RESPONSIBLE y CONTACT_EMAIL, y que la revise quien responde por la app.
-const RESPONSIBLE = '[Nombre o razón social del responsable]';
-const CONTACT_EMAIL = '[correo de contacto]';
+// Si cambia lo que se guarda, hay que actualizarla junto con UPDATED.
+const RESPONSIBLE = 'AdSmart';
+const CONTACT_EMAIL = 'adsmart@gmail.com';
 const UPDATED = '22 de octubre de 2026';
 
 export const metadata = {
