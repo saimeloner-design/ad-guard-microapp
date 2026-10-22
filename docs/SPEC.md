@@ -68,6 +68,7 @@ Navegador ──► NextAuth (Google OAuth, scope adwords)
 | POST | `/api/meta-ads/campaigns/[campaignId]/status` | Body `{ status: "PAUSED" \| "ENABLED" }`. |
 | GET / POST | `/api/meta-ads/settings?accountId=` | Ganancia por venta y tareas de Hoy hechas de la cuenta (§9). POST `{ accountId, profitPerSale }`. |
 | POST | `/api/meta-ads/tasks` | Tareas de Hoy hechas: `{ accountId, keys: [...] }` (§9). |
+| POST | `/api/meta/data-deletion`, `/api/meta/deauthorize` | Avisos de Meta para borrar los datos de un usuario (`signed_request`, §9). |
 
 ## 4. Criterios de alerta
 
@@ -401,9 +402,13 @@ Una fila de `campaign_days` con su índice ocupa unos 0,7 KB y una de `shadow_da
 - Al 70% del espacio se decide entre agregar por semana lo antiguo o pasar a Neon Launch (pago por uso).
 
 ### Borrado de datos (requisito de Meta)
-- **`POST /api/meta/data-deletion`**: es la URL de devolución de llamada para eliminación de datos en la app de Meta. Verifica el `signed_request` con `META_APP_SECRET` y borra el usuario, sus `user_ad_accounts` y sus `events`. También borra las cuentas que quedan sin usuarios, con sus filas diarias. Responde `{ url, confirmation_code }`; la URL muestra el estado del borrado.
-- **`POST /api/meta/deauthorize`**: cuando el usuario quita la app desde Facebook, hace el mismo borrado.
-- Hay que actualizar la política de privacidad: qué se guarda, para qué y cuánto tiempo.
+Hecho en `lib/data-deletion.js`. Meta llama a dos URLs con un `signed_request` firmado con `META_APP_SECRET`; si la firma no es válida se responde 400 y no se borra nada.
+- **`POST /api/meta/data-deletion`**: URL de devolución de llamada para eliminación de datos. Borra todo lo del usuario y responde `{ url, confirmation_code }`; Meta le muestra ambos al usuario.
+- **`POST /api/meta/deauthorize`**: URL de devolución de llamada para desautorizar (el usuario quitó la app desde Facebook). Hace el mismo borrado.
+- **Qué se borra**: el usuario (con su email), y en cascada sus vínculos con cuentas, su ganancia por venta y sus eventos. También las cuentas que quedan sin nadie (sin vínculos, ajustes ni eventos de otro usuario), con sus registros diarios. Las cuentas compartidas con otro usuario se conservan.
+- **`/borrado-de-datos?codigo=`**: página pública con el estado del pedido. La tabla `deletion_requests` (migración `002_borrado.sql`) guarda sólo el código, el origen y las fechas, no a quién pertenecían los datos. El log del borrado (flujo `data-deletion`) tampoco lleva el ID del usuario.
+- **En la app de Meta** (Configuración → Básica / Inicio de sesión con Facebook): poner las dos URLs de producción, `https://ad-guard-microapp.vercel.app/api/meta/data-deletion` y `…/api/meta/deauthorize`.
+- Falta la política de privacidad: qué se guarda, para qué y cuánto tiempo (incluidos los logs de Sentry).
 
 ### Decisiones (2026-10-22)
 1. **Se guarda el email** en `users`, para escribirles a los testers y unir el uso de la app con la hoja de leads de `/beta`. Lo borran los endpoints de borrado de datos.
