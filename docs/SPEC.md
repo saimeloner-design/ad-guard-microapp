@@ -64,6 +64,7 @@ Navegador ──► NextAuth (Google OAuth, scope adwords)
 | POST | `/api/google-ads/campaigns/[campaignId]/status` | Body `{ customerId, status: "PAUSED" \| "ENABLED" }`. |
 | GET | `/api/meta-ads/accounts` | Cuentas publicitarias de Meta (excluye desactivadas y cerradas). |
 | GET | `/api/meta-ads/campaigns?accountId=` | Igual que en Google, con métricas de Meta (ver `plan.md`). |
+| GET | `/api/meta-ads/campaigns/[campaignId]/config?currency=` | Configuración y texto de los anuncios de una campaña, al abrir esa sección (§4f). |
 | POST | `/api/meta-ads/campaigns/[campaignId]/status` | Body `{ status: "PAUSED" \| "ENABLED" }`. |
 
 ## 4. Criterios de alerta
@@ -261,6 +262,29 @@ El monto sugerido es el doble del costo por resultado típico de la cuenta (o 3 
 
 Todas las acciones que escriben en Meta usan el permiso `ads_management`, que la app ya pide. Si Meta rechaza un cambio con un mensaje para el usuario (`error_user_msg`), se muestra ese mensaje.
 
+## 4f. Campañas que van bien y campañas aprendiendo (Meta)
+
+Código: `lib/health-meta.js` (funciones puras, se llaman desde `evaluateMetaAccount`), `CalmSections` y vecinos en `app/components/campaign.js`. Diseño aprobado el 2026-10-22: maqueta "AdSmart Campañas que van bien" (https://claude.ai/artifact/SY4xesEjrsuzYQKGGp6qu4, privada), pantallas "Va bien · C", "Aprendiendo · Meta" y "Aprendiendo · faltan datos". Nada de esto agrega ni quita alertas.
+
+### Grupos de la lista
+Campañas queda en Pausar ya / Para revisar / **Van bien** / **Aprendiendo** / Pausadas. Aprendiendo (`levelOf` = `learning`) son las activas que todavía no se evalúan (Meta aprendiendo o pocos datos) y sin alertas; antes iban en Van bien. Hoy muestra el contador "aprendiendo" sólo si hay alguna.
+
+### Van bien
+Sólo campañas evaluadas por completo, sin alertas ni problemas de configuración nueva:
+- **Línea en la lista** (`health.headline`): "25 compras a $5.000 · tu mejor de ventas" (o "· más barato que tus otras" si cuesta ≤ 90% de la referencia).
+- **Recuadro verde plegado** "Va bien: pasó las N revisiones" con un resumen; al abrirlo, cada revisión con su cifra (consigue resultados, precio contra la referencia, CTR, visitas/clics, frecuencia de 7 días, valor/gasto), sólo las que se pueden calcular, y el consejo "Déjala como está".
+- **Plegados**: el recorrido de la gente en verde, "Tu mejor campaña de {objetivo}" (si es la ganadora de §4d, con "Crear una campaña igual") y la configuración.
+
+### Aprendiendo
+- **Meta aprende** (`learningStatus` = LEARNING): "N de ~50 {resultados}" con barra. Sale de `learning_stage_info.conversions` del conjunto más atrasado, en la misma consulta de conjuntos que ya se hacía. Meta suele necesitar unos 50 resultados en la semana desde el último cambio grande (`last_sig_edit_ts`); si al ritmo actual no llega, se avisa que puede quedar con aprendizaje limitado (M5). Se agrega "No la cambies por ahora" con la fecha del último cambio grande.
+- **Faltan datos** (< 1.000 impresiones y < 30 clics): dos barras ("620 de 1.000 veces vista" o "8 de 30 clics") y en cuántos días llega al ritmo de su vida (máx. 30 días).
+- Las cifras se marcan como provisorias. Plegados: "Cuando termine / tenga datos, revisamos" (las reglas que le aplicarán según el objetivo) y la configuración.
+
+### Configuración de esta campaña
+Plegada. Presupuesto diario, qué busca Meta (optimización del conjunto), ubicación, edad, formato, fechas y el **texto** de los anuncios que publican, con los resultados de cada uno (del desglose de §4c). No se piden imágenes ni videos. Enlace al Administrador de anuncios.
+
+**Cuidado con las consultas a Meta:** la configuración no se pide al cargar el panel sino al abrir la sección (`GET /api/meta-ads/campaigns/{id}/config?currency=`, una consulta), y el navegador la guarda mientras la página esté abierta. Si la campaña ya venía con su configuración (§4d: comparadas, ganadoras y nuevas) no se pide de nuevo.
+
 ## 5. Requisitos para producción (no son del cliente, son del operador de la app)
 
 1. **Proyecto en Google Cloud** con OAuth Client (tipo "Aplicación web"), redirect URI `https://<dominio>/api/auth/callback/google` (y `http://localhost:3000/api/auth/callback/google` en desarrollo).
@@ -308,7 +332,7 @@ Diseño aprobado el 2026-10-20 (maqueta "AdsGuard Nueva estructura"). Cuatro pes
 | Pestaña | Pregunta | Qué tiene |
 |---|---|---|
 | **Hoy** | ¿Qué hago ahora? | Gasto de 30 días, cuántas campañas hay para pausar, para revisar y que van bien, cuánto se ahorra pausando, alertas de cuenta, **una sola tarea** (§4e) y accesos a la próxima fecha, a la ganancia por venta y a Protección |
-| **Campañas** | ¿Cuál anda mal? | Lista agrupada en Pausar ya / Para revisar / Van bien / Pausadas, una línea por campaña con lo gastado y por qué está en ese grupo. Al tocar una se abre el detalle: alertas (las de Revisar plegadas bajo la de Pausar), cifras con palabras explicadas, revisión de campaña nueva y diagnóstico (§4c, §4d) |
+| **Campañas** | ¿Cuál anda mal? | Lista agrupada en Pausar ya / Para revisar / Van bien / Aprendiendo / Pausadas (§4f), una línea por campaña con lo gastado y por qué está en ese grupo. Al tocar una se abre el detalle: alertas (las de Revisar plegadas bajo la de Pausar), cifras con palabras explicadas, revisión de campaña nueva y diagnóstico (§4c, §4d) |
 | **Lo que funciona** | ¿Qué repito? | Próximas fechas y mejores campañas con "Crear una campaña igual" |
 | **Protección** | ¿Estoy cubierto? | Ganancia por venta, guardias y tope de gasto |
 

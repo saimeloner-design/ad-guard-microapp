@@ -80,9 +80,10 @@ function Counts({ campaigns, onGo }) {
     { level: 'pause', label: 'para pausar', className: 'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-400' },
     { level: 'review', label: 'para revisar', className: 'bg-amber-50 text-amber-800 dark:bg-amber-500/10 dark:text-amber-400' },
     { level: 'ok', label: 'van bien', className: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' },
-  ];
+    { level: 'learning', label: 'aprendiendo', className: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300', optional: true },
+  ].filter((i) => !i.optional || n(i.level) > 0);
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${items.length}, minmax(0, 1fr))` }}>
       {items.map((i) => (
         <button
           key={i.level}

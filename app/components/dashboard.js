@@ -122,6 +122,7 @@ const detailFromHash = () => (typeof window === 'undefined' ? null : (window.loc
  * - setStatus(campaign, 'PAUSED' | 'ENABLED')
  * - setPartStatus(campaign, parts, 'PAUSED') — anuncios o conjuntos de "Pausa solo esta parte" (Meta)
  * - copyCampaign(campaignId) → { url? } — "Crear una igual" (Meta)
+ * - loadConfig(campaign) → configuración — "Configuración de esta campaña" (Meta)
  * - protection(body) — guardias y tope de gasto (Meta)
  * `hiddenCount`: campañas antiguas sin gasto en 90 días que no se muestran (Meta).
  */
@@ -186,6 +187,7 @@ export function Dashboard({ account, evaluation, actions, onChangeAccount, platf
 
   const uiActions = useMemo(
     () => ({
+      loadConfig: actions.loadConfig,
       toggle: (c) => {
         const pausing = c.status === 'active';
         setPending({
@@ -293,6 +295,11 @@ export function Dashboard({ account, evaluation, actions, onChangeAccount, platf
               busy={busyId === detail.id}
               actions={uiActions}
               onBack={closeCampaign}
+              adsManagerUrl={
+                platform === 'meta' && account.id !== 'demo'
+                  ? `https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${account.id}&selected_campaign_ids=${detail.id}`
+                  : null
+              }
             />
           ) : (
             <CampaignList

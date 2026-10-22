@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn, signOut, useSession } from 'next-auth/react';
 import { Bell, ChevronRight, LogOut, Pause, RefreshCw, Search, ShieldCheck, Sparkles, TriangleAlert, Wallet, X } from 'lucide-react';
@@ -262,6 +262,7 @@ function DemoView() {
       },
       setPartStatus: async (campaign, parts) => setCampaigns((prev) => withPartsPaused(prev, campaign.id, parts.map((p) => p.id))),
       copyCampaign: async () => ({}),
+      loadConfig: async (campaign) => DEMO_CONTEXT.configs[campaign.id] ?? null,
       protection: async (body) => setProtection((prev) => demoProtection(prev, body)),
     }),
     []
@@ -353,6 +354,7 @@ function LiveView({ source, account, onChangeAccount }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [profit, setProfit] = useProfit(`${source.id}.${account.id}`);
+  const configCache = useRef(new Map());
 
   const load = useCallback(() => {
     fetchJson(`${source.api}/campaigns?${query}`).then(setData, setError);
@@ -391,6 +393,14 @@ function LiveView({ source, account, onChangeAccount }) {
         } finally {
           setData((prev) => ({ ...prev, campaigns: withPartsPaused(prev.campaigns, campaign.id, done) }));
         }
+      },
+      // Se pide a Meta sólo al abrir la sección, y una vez por campaña mientras la página esté abierta.
+      loadConfig: async (campaign) => {
+        const known = configCache.current.get(campaign.id) ?? data.context?.configs?.[campaign.id];
+        if (known?.ads) return known;
+        const { config } = await fetchJson(`${source.api}/campaigns/${campaign.id}/config?currency=${encodeURIComponent(data.account.currency)}`);
+        configCache.current.set(campaign.id, config);
+        return config;
       },
       copyCampaign: async (campaignId) => {
         const res = await post(`/campaigns/${campaignId}/copy`, {});
