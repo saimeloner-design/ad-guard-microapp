@@ -8,6 +8,7 @@ import { evaluateAccount } from '@/lib/alerts';
 import { evaluateMetaAccount } from '@/lib/alerts-meta';
 import { DEMO_ACCOUNT, DEMO_CAMPAIGNS, DEMO_CONTEXT } from '@/lib/demo-data';
 import { Dashboard } from './components/dashboard';
+import { demoViewData, trackDemo } from './components/demo-track';
 import { DONE_KEY, readDone } from './components/today';
 import { GoogleLogo, MetaLogo } from './components/brand-icons';
 import { ThemeToggle } from './components/theme';
@@ -312,7 +313,15 @@ function demoProtection(prev, body) {
 function DemoView() {
   const [campaigns, setCampaigns] = useState(DEMO_CAMPAIGNS);
   const [protection, setProtection] = useState(DEMO_CONTEXT.protection);
-  const [profit, setProfit] = useProfit('demo');
+  const [profit, setDemoProfit] = useProfit('demo');
+  const profitTimer = useRef(null);
+  // Se escribe de a un dígito: se registra cuando deja de escribir.
+  const setProfit = (value) => {
+    setDemoProfit(value);
+    clearTimeout(profitTimer.current);
+    profitTimer.current = setTimeout(() => trackDemo('profit_set'), 1500);
+  };
+  useEffect(() => trackDemo('view', demoViewData()), []);
   const evaluation = useMemo(
     () => evaluateMetaAccount(campaigns, { currency: DEMO_ACCOUNT.currency, context: DEMO_CONTEXT, profitPerSale: profit }),
     [campaigns, profit]
@@ -321,12 +330,22 @@ function DemoView() {
   const actions = useMemo(
     () => ({
       setStatus: async (campaign, status) => {
+        trackDemo(status === 'ENABLED' ? 'enable' : 'pause', { campaignId: campaign.id });
         setCampaigns((prev) => prev.map((c) => (c.id === campaign.id ? { ...c, status: status === 'ENABLED' ? 'active' : 'paused' } : c)));
       },
-      setPartStatus: async (campaign, parts) => setCampaigns((prev) => withPartsPaused(prev, campaign.id, parts.map((p) => p.id))),
-      copyCampaign: async () => ({}),
+      setPartStatus: async (campaign, parts) => {
+        trackDemo('part_pause', { campaignId: campaign.id });
+        setCampaigns((prev) => withPartsPaused(prev, campaign.id, parts.map((p) => p.id)));
+      },
+      copyCampaign: async (campaignId) => {
+        trackDemo('copy', { campaignId });
+        return {};
+      },
       loadConfig: async (campaign) => DEMO_CONTEXT.configs[campaign.id] ?? null,
-      protection: async (body) => setProtection((prev) => demoProtection(prev, body)),
+      protection: async (body) => {
+        trackDemo('protection', { action: body.action, key: body.key });
+        setProtection((prev) => demoProtection(prev, body));
+      },
     }),
     []
   );
@@ -338,7 +357,15 @@ function DemoView() {
         title="Estás viendo campañas de Meta de ejemplo"
         className="mb-6"
         action={
-          <Button size="sm" variant="secondary" icon={MetaLogo} onClick={() => signIn('facebook', { callbackUrl: '/' })}>
+          <Button
+            size="sm"
+            variant="secondary"
+            icon={MetaLogo}
+            onClick={() => {
+              trackDemo('connect_click');
+              signIn('facebook', { callbackUrl: '/' });
+            }}
+          >
             Conectar Meta
           </Button>
         }
@@ -354,6 +381,7 @@ function DemoView() {
         profit={profit}
         onProfitChange={setProfit}
         protection={protection}
+        onTrack={trackDemo}
       />
     </>
   );
@@ -595,7 +623,15 @@ function Home({ demo }) {
   const meta = authenticated && !google && session?.hasMetaAds;
 
   const headerAction = demo ? (
-    <Button size="sm" variant="ghost" icon={X} onClick={() => router.push('/')}>
+    <Button
+      size="sm"
+      variant="ghost"
+      icon={X}
+      onClick={() => {
+        trackDemo('exit');
+        router.push('/');
+      }}
+    >
       Salir<span className="hidden sm:inline">&nbsp;de la demo</span>
     </Button>
   ) : authenticated ? (

@@ -122,7 +122,7 @@ function RowCard({ icon: RowIcon, tone, title, text, onClick }) {
 
 /** Hoy: cómo va la cuenta y una sola tarea a la vez. */
 /** `doneTasks` (Set) y `onTaskDone(id)`: tareas hechas guardadas fuera del navegador; sin ellas se usa localStorage. */
-export function TodayTab({ account, evaluation, actions, profit, protection, doneTasks, onTaskDone, onOpen, onGo }) {
+export function TodayTab({ account, evaluation, actions, profit, protection, doneTasks, onTaskDone, onTrack, onOpen, onGo }) {
   const { summary, campaigns, accountAlerts, dates = [] } = evaluation;
   const money = (v) => formatMoney(v, account.currency);
   const [localDone, setLocalDone] = useState(readDone);
@@ -136,6 +136,7 @@ export function TodayTab({ account, evaluation, actions, profit, protection, don
   const task = tasks[0];
 
   const markDone = (id) => {
+    onTrack?.('task_done', { key: id.split(':')[0] });
     if (onTaskDone) return onTaskDone(id);
     const next = new Set(localDone).add(id);
     setLocalDone(next);

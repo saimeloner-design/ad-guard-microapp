@@ -138,6 +138,7 @@ export function Dashboard({
   doneTasks,
   onTaskDone,
   protection,
+  onTrack, // sólo la demo: uso anónimo (docs/SPEC.md §9)
 }) {
   const [tab, setTab] = useState('hoy');
   const [detailId, setDetailId] = useState(null);
@@ -164,11 +165,12 @@ export function Dashboard({
   }, []);
 
   const openCampaign = useCallback((id) => {
+    onTrack?.('campaign_open', { campaignId: id });
     window.history.pushState(window.history.state, '', `#campana-${id}`);
     setTab('campanas');
     setDetailId(id);
     window.scrollTo(0, 0);
-  }, []);
+  }, [onTrack]);
 
   const closeCampaign = () => {
     if (detailFromHash()) window.history.back();
@@ -176,6 +178,7 @@ export function Dashboard({
   };
 
   const changeTab = (id) => {
+    onTrack?.('tab', { tab: id });
     if (detailFromHash()) window.history.replaceState(window.history.state, '', window.location.pathname + window.location.search);
     setDetailId(null);
     setTab(id);
@@ -295,6 +298,7 @@ export function Dashboard({
             protection={platform === 'meta' ? protection : null}
             doneTasks={doneTasks}
             onTaskDone={onTaskDone}
+            onTrack={onTrack}
             onOpen={openCampaign}
             onGo={changeTab}
           />

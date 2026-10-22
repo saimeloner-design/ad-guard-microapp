@@ -69,6 +69,7 @@ Navegador ──► NextAuth (Google OAuth, scope adwords)
 | GET / POST | `/api/meta-ads/settings?accountId=` | Ganancia por venta y tareas de Hoy hechas de la cuenta (§9). POST `{ accountId, profitPerSale }`. |
 | POST | `/api/meta-ads/tasks` | Tareas de Hoy hechas: `{ accountId, keys: [...] }` (§9). |
 | POST | `/api/meta/data-deletion`, `/api/meta/deauthorize` | Avisos de Meta para borrar los datos de un usuario (`signed_request`, §9). |
+| POST | `/api/demo/events` | Uso anónimo de la demo `{ session, type, data }` (§9). Público. |
 
 ## 4. Criterios de alerta
 
@@ -395,10 +396,18 @@ El navegador manda `accountId`, `alerts` y `cost` junto a cada acción; el servi
 
 **Se quedan donde están**: los intentos de login (anónimos, antes de saber quién es el usuario) y el consumo de la API de Meta (flujo `usage`) siguen en Sentry. Los leads de `/beta` siguen en la Google Sheet. El tema y la cuenta elegida siguen en el navegador. La calibración y la sombra dejan de ir a Sentry.
 
+### Uso anónimo de la demo
+Tabla `demo_events` (migración `003_demo.sql`): qué hacen las visitas en `/demo`, sin saber quiénes son. `session_id` es un UUID al azar en `sessionStorage` (se borra al cerrar la pestaña); no hay usuario, email, IP ni cookie.
+- **Tipos**: `view` (con `utm_*`, `referrer` si viene de otro sitio y `width` de la pantalla), `tab`, `campaign_open`, `pause`, `enable`, `part_pause`, `copy`, `protection` (`action`, `key`), `profit_set` (cuando deja de escribir), `task_done` (`key`: tipo de tarea), `connect_click` (tocó "Conectar Meta") y `exit` (tocó "Salir de la demo").
+- **Cómo llega**: `trackDemo` (`app/components/demo-track.js`) usa `sendBeacon` y no espera respuesta. `POST /api/demo/events` es público: acepta sólo los tipos y campos de la lista (`lib/demo-events.js`), textos de hasta 100 caracteres y cuerpos de hasta 2 KB, y guarda después de responder.
+- **Preguntas que responde**: ¿cuántas visitas llegan desde cada anuncio (`utm_content`)?, ¿qué pestañas miran?, ¿cuántas tocan "Conectar Meta"?, ¿en qué paso se van?
+- Riesgo: al ser pública, alguien podría mandar muchos eventos válidos. Si pasa, se limita con el firewall de Vercel (límite por IP en `/api/demo/events`).
+
 ### Espacio
 Una fila de `campaign_days` con su índice ocupa unos 0,7 KB y una de `shadow_days`, unos 0,2 KB por nivel. Con 50 cuentas de 20 campañas activas son unos 0,4 GB al año, lo que cabe en el 1 GB del plan gratuito. Retención:
 - `campaign_days` y `shadow_days`: 13 meses (permite comparar con el mismo mes del año anterior). Las filas más antiguas se borran con un cron de Vercel semanal.
 - `account_days` y `events`: sin límite, son pocas.
+- `demo_events`: 6 meses.
 - Al 70% del espacio se decide entre agregar por semana lo antiguo o pasar a Neon Launch (pago por uso).
 
 ### Borrado de datos (requisito de Meta)
