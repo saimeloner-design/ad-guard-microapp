@@ -309,7 +309,7 @@ Plegada. Presupuesto diario, qué busca Meta (optimización del conjunto), ubica
 
 ## 7. Calibración y análisis en sombra
 
-Ambos sólo escriben logs en Sentry (proyecto `ad-guard-microapp`); el usuario no ve nada distinto.
+Ambos sólo escriben logs en Sentry (proyecto `ad-guard-microapp`); el usuario no ve nada distinto. Pasarán a guardarse también en la base de datos (§9).
 
 **Consumo de Meta** (flujo `usage`): cada respuesta de Meta registra el consumo de sus límites que viene en los encabezados (`x-app-usage`, `x-ad-account-usage`, `x-business-use-case-usage`, en % del límite), y cada listado completo registra páginas, filas, bytes, duración y el mayor consumo visto. Sirve para saber cuánto "gasta" cada consulta antes de agregar otras.
 
@@ -342,3 +342,53 @@ Diseño aprobado el 2026-10-20 (maqueta "AdsGuard Nueva estructura"). Cuatro pes
 | **Protección** | ¿Estoy cubierto? | Ganancia por venta, guardias y tope de gasto |
 
 Reglas: una tarea a la vez; el detalle sólo al tocar; el botón donde está el problema; lo que se configura una vez queda aparte. El detalle de campaña usa `#campana-{id}` en la URL para que el gesto de "atrás" del celular vuelva a la lista. El número rojo sobre "Campañas" son las campañas para pausar. Con Google (hoy oculto) sólo hay Hoy y Campañas.
+
+## 9. Base de datos
+
+Propuesta del 2026-10-22, **pendiente de aprobar**. Hasta ahora todo vive en la cookie de sesión, en el navegador o en logs de Sentry (§7). La base de datos sirve para analizar con consultas, y no con búsquedas de logs, cómo rinden las alertas y qué hace el usuario con ellas. Más adelante también para lo que hoy no se puede: resumen semanal, avisos y revisión programada.
+
+### Proveedor
+- **Neon** (Postgres), plan gratuito, instalado desde el Marketplace de Vercel. Da 0,5 GB por proyecto, 100 CU-hora al mes y se apaga solo tras 5 min sin uso.
+- **Una rama por entorno**: `main` para producción y `develop` para desarrollo, cada una con su `DATABASE_URL` (Production / Preview limitada a `develop`). Se desactiva la rama automática por cada deploy de preview, porque no se usan (ver AGENTS.md).
+- **Driver `pg`** en el runtime de Node: `@sentry/nextjs` traza esas consultas solo y aparecen como spans en las trazas que ya hay. Sin ORM: SQL en `lib/db.js` y migraciones como archivos `.sql` numerados en `db/migrations/`.
+
+### Principios
+1. **Nada de tokens.** El token de Meta sigue sólo en el JWT (§5). Si algún día hace falta para tareas en segundo plano, se guarda cifrado y se decide aparte.
+2. **Sin datos personales.** El usuario se identifica por su ID de Meta para esta app (app-scoped), sin nombre ni email. Las campañas se guardan por ID, sin nombres ni textos de anuncios, igual que hoy en Sentry.
+3. **Nunca rompe ni demora la respuesta.** Las escrituras van después de responder (`after()`, como `runInShadow`) en un solo upsert por carga. Si fallan, `reportError` en el flujo `db` y el usuario no nota nada.
+4. **Un registro por día.** Las tablas diarias usan `(id, día)` como clave y cada recarga sobrescribe la del día. Así se resuelve el "quedarse con un registro por campaña y día" de §7. El día es la fecha en la zona horaria de la cuenta publicitaria.
+5. **Se guarda lo que se va a consultar.** El detalle crudo y los diagnósticos técnicos se quedan en Sentry.
+
+### Tablas
+
+| Tabla | Clave | Qué guarda | Viene de |
+|---|---|---|---|
+| `users` | `id` (uuid); `meta_user_id` único | `created_at`, `last_seen_at`, `device` del primer login | login (`lib/auth.js`) |
+| `ad_accounts` | `id` (uuid); `meta_account_id` único | `currency`, `timezone`, `first_seen_at`, `last_seen_at` | `/api/meta-ads/accounts` |
+| `user_ad_accounts` | `(user_id, account_id)` | qué usuario ve qué cuenta (una cuenta puede tener varios usuarios) | `/api/meta-ads/accounts` |
+| `account_days` | `(account_id, day)` | resumen de cuenta: `campaigns`, `active_count`, `alert_count`, `total_cost`, `potential_savings`, `account_alerts text[]` | `logCalibration` |
+| `campaign_days` | `(meta_campaign_id, day)` | `account_id`, `status`, `objective`, `result_type`, `cost`, `impressions`, `results`, `cost_per_result`, `learning`, `alerts text[]` y el resto de las métricas de calibración en `metrics jsonb` | `logCalibration` |
+| `shadow_days` | `(meta_campaign_id, day, level)` | `measured`, `parts`, `parts_with_spend`, `wasted_parts`, `wasted_share`, `top1_wasted_share`, `top2_wasted_share`, `campaign_flagged_pause` | `logWasteConcentration` |
+| `events` | `id` | `user_id`, `account_id`, `meta_campaign_id` (opcional), `type`, `at`, `data jsonb` | acciones del usuario |
+
+En `campaign_days` sólo van como columnas las métricas que se filtran o agrupan. El resto va en `metrics jsonb`, para poder agregar métricas sin migración.
+
+**Tipos de `events`**: `pause` / `enable` (campaña o parte, con la regla de la alerta que se mostraba y el monto en juego), `copy` (Crear una igual), `guard_create` / `guard_remove`, `spend_cap_set` / `spend_cap_remove`, `task_done` (Hoy haz esto) y `login`. Con esto se responde, por ejemplo: ¿qué alertas terminan en pausa?, ¿cuánto se ahorró?, ¿se reactivan campañas que la app mandó a pausar (posible alerta falsa)?
+
+**Se quedan donde están**: los intentos de login (anónimos, antes de saber quién es el usuario) y el consumo de la API de Meta (flujo `usage`) siguen en Sentry. Los leads de `/beta` siguen en la Google Sheet. El tema y la cuenta elegida siguen en el navegador.
+
+### Espacio
+Una fila de `campaign_days` con su índice ocupa unos 0,7 KB y una de `shadow_days`, unos 0,2 KB por nivel. Con 50 cuentas de 20 campañas activas son unos 0,4 GB al año, lo que cabe en el plan gratuito durante la fase piloto. Retención:
+- `campaign_days` y `shadow_days`: 13 meses (permite comparar con el mismo mes del año anterior). Las filas más antiguas se borran con un cron de Vercel semanal.
+- `account_days` y `events`: sin límite, son pocas.
+- Al 70% del espacio se decide entre agregar por semana lo antiguo o pasar a Neon Launch (pago por uso).
+
+### Borrado de datos (requisito de Meta)
+- **`POST /api/meta/data-deletion`**: es la URL de devolución de llamada para eliminación de datos en la app de Meta. Verifica el `signed_request` con `META_APP_SECRET` y borra el usuario, sus `user_ad_accounts` y sus `events`. También borra las cuentas que quedan sin usuarios, con sus filas diarias. Responde `{ url, confirmation_code }`; la URL muestra el estado del borrado.
+- **`POST /api/meta/deauthorize`**: cuando el usuario quita la app desde Facebook, hace el mismo borrado.
+- Hay que actualizar la política de privacidad: qué se guarda, para qué y cuánto tiempo.
+
+### Por decidir
+- ¿Guardar el email para poder escribirles a los testers? Hoy está sólo en la hoja de leads y no se puede unir con el uso de la app.
+- ¿Pasar a la base de datos la ganancia por venta (`adsguard.gananciaPorVenta.{cuenta}`) y las tareas hechas (`adsguard.tareasHechas`)? Hoy están en el navegador: se pierden al cambiar de dispositivo y no se pueden analizar.
+- ¿Se sigue registrando la calibración en Sentry además de en la base de datos? Lo propuesto es mantener ambos 2 semanas para comparar y después dejar sólo la base de datos.
