@@ -377,13 +377,31 @@ function HealthBox({ health: h }) {
         </span>
         <ChevronDown className="size-4 mt-0.5 text-muted transition-transform motion-reduce:transition-none group-open:rotate-180" aria-hidden="true" />
       </summary>
-      <div className="pl-[42px] pr-3 pb-3 flex flex-col gap-2.5 text-[13px] leading-relaxed">
-        <ul className="flex flex-col gap-1.5 text-fg-2">
-          {h.checks.map((ch) => (
-            <li key={ch.key}>{ch.text}</li>
-          ))}
+      <div className="pl-[42px] pr-3 pb-3 flex flex-col gap-3 text-[13px] leading-relaxed">
+        <ul className="flex flex-col gap-2 text-fg-2">
+          {h.checks.map((ch) => {
+            // "Etiqueta: cifra" → la etiqueta en negrita para leer la lista de un vistazo.
+            const i = ch.text.indexOf(': ');
+            return (
+              <li key={ch.key} className="grid grid-cols-[16px_1fr] gap-2 items-start">
+                <span className="size-4 mt-0.5 grid place-items-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300">
+                  <Check className="size-2.5" strokeWidth={3.5} aria-hidden="true" />
+                </span>
+                {i === -1 ? (
+                  <span>{ch.text}</span>
+                ) : (
+                  <span>
+                    <span className="font-semibold text-fg">{ch.text.slice(0, i)}:</span> {ch.text.slice(i + 2)}
+                  </span>
+                )}
+              </li>
+            );
+          })}
         </ul>
-        <p className="font-semibold text-emerald-800 dark:text-emerald-300">{h.advice}</p>
+        <p className="grid grid-cols-[16px_1fr] gap-2 items-start border-t border-emerald-200 dark:border-emerald-500/25 pt-3 font-medium text-emerald-800 dark:text-emerald-300">
+          <Lightbulb className="size-4 mt-0.5" aria-hidden="true" />
+          <span>{h.advice}</span>
+        </p>
       </div>
     </details>
   );
