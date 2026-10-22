@@ -1,12 +1,16 @@
 ## Consideraciones generales
 - Responde siempre en español
-- Después de hacer un commit, haz siempre `git push`
-- Después de cada `git push`, lanza `npm run notify:deploy` en segundo plano para que avise con terminal-notifier cuando termine el deploy de producción
+- Se trabaja siempre en la rama `develop`. Después de hacer un commit, haz siempre `git push` (a `develop`)
+- Nunca hagas commit ni push directamente a `main`. Sólo cuando el usuario pida pasar a producción: `git checkout main && git merge --ff-only develop && git push`, y vuelve a `develop`
+- Después de cada `git push`, lanza `npm run notify:deploy` en segundo plano (desde la rama que acabas de subir) para que avise con terminal-notifier cuando termine el deploy
 
 ## Datos del proyecto
 - Next.js 16 con next-auth
 - desplegado en Vercel
-- Sólo se prueba en producción (`https://ad-guard-microapp.vercel.app`, rama `main`). No se usa localhost ni los deploys de preview de Vercel: no hace falta configurar variables ni redirect URIs para esos entornos.
+- Dos entornos, ambos en Vercel (no se usa localhost):
+  - **Producción** — rama `main`, `https://ad-guard-microapp.vercel.app`. La usan los testers: no se toca salvo para publicar lo probado en desarrollo.
+  - **Desarrollo** — rama `develop`, `https://ad-guard-microapp-dev.vercel.app` (entorno Preview con dominio fijo). Aquí se prueban los cambios. Sus variables propias (`NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `META_APP_SECRET`) están en Preview limitadas a la rama `develop`; no tiene Pixel de Meta ni hoja de leads de `/beta`.
+- Los deploys de preview de otras ramas no se usan: no hace falta configurar variables ni redirect URIs para ellos.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
