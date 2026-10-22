@@ -1,9 +1,10 @@
+import { recordEvent } from '@/lib/events';
 import { flushLogsAfterResponse, log } from '@/lib/log';
 import {
   cleanAdAccountId,
   disableMetaGuard,
   enableMetaGuard,
-  getMetaAccessToken,
+  getMetaSession,
   getMetaProtection,
   MetaApiError,
   metaErrorResponse,
@@ -15,13 +16,22 @@ import {
 //   guard-on  { key, amount?, profit? }   guard-off { key }
 //   cap-set   { amount }                  cap-reset, cap-delete
 // Devuelve el estado actualizado, leído de nuevo desde Meta.
+
+const EVENT_TYPES = {
+  'guard-on': 'guard_create',
+  'guard-off': 'guard_remove',
+  'cap-set': 'spend_cap_set',
+  'cap-reset': 'spend_cap_reset',
+  'cap-delete': 'spend_cap_remove',
+};
+
 export async function POST(request) {
   flushLogsAfterResponse();
   try {
     const body = await request.json().catch(() => ({}));
     const accountId = cleanAdAccountId(body.accountId);
     const currency = String(body.currency || 'CLP');
-    const accessToken = await getMetaAccessToken(request);
+    const { accessToken, userId } = await getMetaSession(request);
     const number = (v) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : undefined);
 
     switch (body.action) {
@@ -42,6 +52,16 @@ export async function POST(request) {
         throw new MetaApiError('acción inválida', { status: 400, code: 'BAD_REQUEST' });
     }
     log('info', 'meta-ads', `Protección: ${body.action}`, { accountId, action: body.action, key: body.key });
+    recordEvent({
+      userId,
+      accountId,
+      type: EVENT_TYPES[body.action],
+      data: {
+        ...(body.key && { key: String(body.key).slice(0, 40) }),
+        ...(number(body.amount) && { amount: number(body.amount) }),
+        currency,
+      },
+    });
     return Response.json(await getMetaProtection(accessToken, accountId));
   } catch (error) {
     return metaErrorResponse(error);

@@ -372,7 +372,7 @@ Esquema en `db/migrations/001_inicial.sql`. Las claves son los IDs de Meta (sin 
 | `campaign_days` | `(meta_campaign_id, day)` | `meta_account_id`, `status`, `objective`, `result_type`, `cost`, `impressions`, `results`, `cost_per_result`, `learning`, `alerts text[]` y el resto de las métricas de calibración en `metrics jsonb` | `saveMetaCalibration` | hecho |
 | `shadow_days` | `(meta_campaign_id, day, level)` | `measured`, `campaign_alerts`, `campaign_flagged_pause`, `parts`, `parts_with_spend` y, si se mide, `wasted_parts`, `wasted_share`, `top1_wasted_share`, `top2_wasted_share` | `saveMetaWasteConcentration` | hecho |
 | `account_settings` | `(meta_user_id, meta_account_id)` | `profit_per_sale` (Cuánto ganas por venta) y `updated_at` | Protección y Hoy (hoy en el navegador) | tabla creada, falta conectarla |
-| `events` | `id` | `meta_user_id`, `meta_account_id`, `meta_campaign_id` (opcional), `type`, `at`, `data jsonb` | acciones del usuario | tabla creada, falta conectarla |
+| `events` | `id` | `meta_user_id`, `meta_account_id`, `meta_campaign_id` (opcional), `type`, `at`, `data jsonb` | acciones del usuario (`lib/events.js`) | hecho, salvo `task_done` |
 
 Todo se guarda en `GET /api/meta-ads/campaigns`, después de responder (`saveAfterResponse` en `lib/db.js`), en una sola transacción. El día es la fecha de hoy en la zona horaria de la cuenta; las métricas son las de 30 días que se ven en el panel.
 
@@ -380,7 +380,15 @@ Todo se guarda en `GET /api/meta-ads/campaigns`, después de responder (`saveAft
 
 En `campaign_days` sólo van como columnas las métricas que se filtran o agrupan. El resto va en `metrics jsonb`, para poder agregar métricas sin migración.
 
-**Tipos de `events`**: `pause` / `enable` (campaña o parte, con la regla de la alerta que se mostraba y el monto en juego), `copy` (Crear una igual), `guard_create` / `guard_remove`, `spend_cap_set` / `spend_cap_remove`, `task_done` (Hoy haz esto; `data.key` es la tarea, y las tareas hechas se leen de aquí) y `login`. Con esto se responde, por ejemplo: ¿qué alertas terminan en pausa?, ¿cuánto se ahorró?, ¿se reactivan campañas que la app mandó a pausar (posible alerta falsa)?
+**Tipos de `events`** (`recordEvent` en `lib/events.js`, después de responder; si el usuario o la cuenta todavía no están guardados, los crea):
+- `pause` / `enable`: campaña. `data`: `alerts` (reglas que se veían al confirmar) y `cost` (gasto de 30 días).
+- `part_pause` / `part_enable`: anuncio o conjunto de "Pausa solo esta parte". `data`: `partId`, `level`, `alerts` de la campaña y `cost` de la parte.
+- `copy`: Crear una igual. `data`: `copiedCampaignId`.
+- `guard_create` / `guard_remove`, `spend_cap_set` / `spend_cap_reset` / `spend_cap_remove`: Protección. `data`: `key` de la guardia, `amount` y `currency`.
+- `login`: cada inicio de sesión con Meta (también guarda el email).
+- `task_done`: Hoy haz esto; `data.key` es la tarea y las tareas hechas se leen de aquí. Pendiente, va con la ganancia por venta.
+
+El navegador manda `accountId`, `alerts` y `cost` junto a cada acción; el servidor los limpia y, si faltan, guarda el evento igual. Con esto se responde, por ejemplo: ¿qué alertas terminan en pausa?, ¿cuánto se ahorró?, ¿se reactivan campañas que la app mandó a pausar (posible alerta falsa)?
 
 **Se quedan donde están**: los intentos de login (anónimos, antes de saber quién es el usuario) y el consumo de la API de Meta (flujo `usage`) siguen en Sentry. Los leads de `/beta` siguen en la Google Sheet. El tema y la cuenta elegida siguen en el navegador. La calibración y la sombra dejan de ir a Sentry.
 

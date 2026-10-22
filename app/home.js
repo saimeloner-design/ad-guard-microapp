@@ -376,7 +376,13 @@ function LiveView({ source, account, onChangeAccount }) {
 
   const actions = {
     setStatus: async (campaign, status) => {
-      const res = await post(`/campaigns/${campaign.id}/status`, { ...params, status });
+      // `alerts` y `cost` sólo se guardan como evento (docs/SPEC.md §9).
+      const res = await post(`/campaigns/${campaign.id}/status`, {
+        ...params,
+        status,
+        alerts: campaign.alerts?.map((a) => a.rule),
+        cost: campaign.cost,
+      });
       setData((prev) => ({
         ...prev,
         campaigns: prev.campaigns.map((c) => (c.id === campaign.id ? { ...c, status: res.status } : c)),
@@ -387,7 +393,14 @@ function LiveView({ source, account, onChangeAccount }) {
         const done = [];
         try {
           for (const p of parts) {
-            await post(`/parts/${p.id}/status`, { status });
+            await post(`/parts/${p.id}/status`, {
+              status,
+              accountId: account.id,
+              campaignId: campaign.id,
+              level: campaign.diagnosis?.cut?.level,
+              alerts: campaign.alerts?.map((a) => a.rule),
+              cost: p.cost,
+            });
             done.push(p.id);
           }
         } finally {
@@ -403,7 +416,7 @@ function LiveView({ source, account, onChangeAccount }) {
         return config;
       },
       copyCampaign: async (campaignId) => {
-        const res = await post(`/campaigns/${campaignId}/copy`, {});
+        const res = await post(`/campaigns/${campaignId}/copy`, { accountId: account.id });
         return {
           url: res.campaignId && `https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${account.id}&selected_campaign_ids=${res.campaignId}`,
         };
