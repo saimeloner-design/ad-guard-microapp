@@ -24,7 +24,8 @@ if (!url) {
   process.exit(0);
 }
 
-const client = new pg.Client({ connectionString: url });
+// Igual que strictSsl en lib/db.js: evita el aviso de `pg` sobre sslmode=require.
+const client = new pg.Client({ connectionString: url.replace(/sslmode=(prefer|require|verify-ca)\b/, 'sslmode=verify-full') });
 await client.connect();
 try {
   await client.query('select pg_advisory_lock($1)', [LOCK_ID]);
