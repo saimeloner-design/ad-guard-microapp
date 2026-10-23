@@ -515,6 +515,7 @@
   max-width: 40em;
 }
 .faq details ol {
+  list-style: decimal;
   margin: 0;
   padding: 0 0 18px 22px;
   display: flex;
@@ -630,12 +631,18 @@
   color: var(--fg-2);
 }
 .thanksSteps {
+  list-style: decimal;
   margin: 0;
   padding-left: 22px;
   display: flex;
   flex-direction: column;
   gap: 8px;
   color: var(--fg-2);
+}
+.faq details ol ::marker,
+.thanksSteps ::marker {
+  color: var(--accent);
+  font-weight: 600;
 }
 .thanksSteps a {
   color: var(--accent);
