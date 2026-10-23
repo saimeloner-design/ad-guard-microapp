@@ -133,8 +133,6 @@ export function Dashboard({
   onChangeAccount,
   platform = 'google',
   hiddenCount = 0,
-  profit,
-  onProfitChange,
   doneTasks,
   onTaskDone,
   protection,
@@ -294,7 +292,6 @@ export function Dashboard({
             account={account}
             evaluation={evaluation}
             actions={uiActions}
-            profit={profit}
             protection={platform === 'meta' ? protection : null}
             doneTasks={doneTasks}
             onTaskDone={onTaskDone}
@@ -333,8 +330,6 @@ export function Dashboard({
           <ProtectionTab
             evaluation={evaluation}
             money={money}
-            profit={profit}
-            onProfitChange={onProfitChange}
             protection={protection}
             onProtection={actions.protection}
             confirm={setPending}

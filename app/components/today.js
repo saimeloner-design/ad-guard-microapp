@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { formatMoney, SEVERITY } from '@/lib/alerts';
-import { CalendarDays, ChevronRight, Coins, PartyPopper, ShieldCheck } from 'lucide-react';
+import { CalendarDays, ChevronRight, PartyPopper, ShieldCheck } from 'lucide-react';
 import { AlertBox, levelOf } from './campaign';
 import { Alert, Button } from './ui';
 
@@ -122,7 +122,7 @@ function RowCard({ icon: RowIcon, tone, title, text, onClick }) {
 
 /** Hoy: cómo va la cuenta y una sola tarea a la vez. */
 /** `doneTasks` (Set) y `onTaskDone(id)`: tareas hechas guardadas fuera del navegador; sin ellas se usa localStorage. */
-export function TodayTab({ account, evaluation, actions, profit, protection, doneTasks, onTaskDone, onTrack, onOpen, onGo }) {
+export function TodayTab({ account, evaluation, actions, protection, doneTasks, onTaskDone, onTrack, onOpen, onGo }) {
   const { summary, campaigns, accountAlerts, dates = [] } = evaluation;
   const money = (v) => formatMoney(v, account.currency);
   const [localDone, setLocalDone] = useState(readDone);
@@ -144,7 +144,6 @@ export function TodayTab({ account, evaluation, actions, profit, protection, don
   };
 
   const nextDate = dates.find((d) => d.daysLeft <= 45);
-  const hasSales = campaigns.some((c) => c.resultType === 'purchase' && c.status === 'active');
   const guardsOn = protection?.guards ? Object.values(protection.guards).filter((g) => g.active).length : null;
   const capPct = protection?.spendCap > 0 ? Math.round((protection.amountSpent / protection.spendCap) * 100) : null;
   const today = new Date().toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -217,17 +216,8 @@ export function TodayTab({ account, evaluation, actions, profit, protection, don
         </Alert>
       )}
 
-      {(nextDate || (hasSales && !profit) || protection) && (
+      {(nextDate || protection) && (
         <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted mt-1">También para ti</h3>
-      )}
-      {hasSales && !profit && (
-        <RowCard
-          icon={Coins}
-          tone="bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300"
-          title="¿Cuánto ganas por cada venta?"
-          text="Con ese dato te decimos si cada campaña te hace ganar o perder plata."
-          onClick={() => onGo('proteccion')}
-        />
       )}
       {nextDate && (
         <RowCard

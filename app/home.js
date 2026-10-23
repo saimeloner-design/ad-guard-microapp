@@ -22,31 +22,14 @@ function readStoredAccount(key) {
   }
 }
 
-/** Lo que el usuario gana por venta (Protección). Se guarda sólo en este navegador, por cuenta. */
-function useProfit(accountKey) {
-  const key = `adsguard.gananciaPorVenta.${accountKey}`;
-  const [profit, setProfit] = useState(() => Number(readStoredAccount(key)) || 0);
-  const change = useCallback(
-    (value) => {
-      setProfit(value);
-      storeAccount(key, value ? String(value) : null);
-    },
-    [key]
-  );
-  return [profit, change];
-}
-
-const profitKey = (sourceId, accountId) => `adsguard.gananciaPorVenta.${sourceId}.${accountId}`;
-
 /**
- * Meta: ganancia por venta y tareas de Hoy hechas, guardadas en la base de datos (docs/SPEC.md §9).
+ * Meta: tareas de Hoy hechas, guardadas en la base de datos (docs/SPEC.md §9).
  * La primera vez sube lo que hubiera en este navegador y lo borra de aquí. Si la base de datos
  * no responde se sigue con el navegador, como antes. Google y la demo usan sólo el navegador.
  */
 function useAccountSettings(source, account, post) {
   const enabled = source.id === 'meta';
-  const [localProfit, setLocalProfit] = useProfit(`${source.id}.${account.id}`);
-  // null: cargando (o Google); false: la base de datos falló; si no, { profit, done }.
+  // null: cargando (o Google); false: la base de datos falló; si no, { done }.
   const [remote, setRemote] = useState(null);
 
   useEffect(() => {
@@ -54,15 +37,7 @@ function useAccountSettings(source, account, post) {
     let cancelled = false;
     (async () => {
       const saved = await fetchJson(`${source.api}/settings?accountId=${encodeURIComponent(account.id)}`);
-      let profit = saved.profitPerSale ?? 0;
       const done = new Set(saved.doneTasks);
-      const key = profitKey(source.id, account.id);
-      const stored = Number(readStoredAccount(key)) || 0;
-      if (stored > 0 && !profit) {
-        await post('/settings', { accountId: account.id, profitPerSale: stored });
-        profit = stored;
-      }
-      storeAccount(key, null);
       const pending = [...readDone()].filter((id) => !done.has(id));
       if (pending.length) {
         await post('/tasks', { accountId: account.id, keys: pending });
@@ -71,7 +46,7 @@ function useAccountSettings(source, account, post) {
       try {
         localStorage.removeItem(DONE_KEY);
       } catch {}
-      return { profit, done };
+      return { done };
     })().then(
       (value) => !cancelled && setRemote(value),
       () => !cancelled && setRemote(false)
@@ -83,13 +58,8 @@ function useAccountSettings(source, account, post) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, source, account.id]);
 
-  if (!remote) return { profit: localProfit, setProfit: setLocalProfit };
+  if (!remote) return {};
   return {
-    profit: remote.profit,
-    setProfit: (value) => {
-      setRemote((prev) => ({ ...prev, profit: value || 0 }));
-      post('/settings', { accountId: account.id, profitPerSale: value || 0 }).catch(() => {});
-    },
     doneTasks: remote.done,
     markTaskDone: (id) => {
       setRemote((prev) => ({ ...prev, done: new Set(prev.done).add(id) }));
@@ -141,7 +111,7 @@ const SOURCES = {
     api: '/api/meta-ads',
     storageKey: 'adguard.metaAccountId',
     params: (a) => ({ accountId: a.id }),
-    evaluate: (data, profitPerSale) => evaluateMetaAccount(data.campaigns, { currency: data.account.currency, context: data.context, profitPerSale }),
+    evaluate: (data) => evaluateMetaAccount(data.campaigns, { currency: data.account.currency, context: data.context }),
     extraActions: true,
     formatId: (id) => `ID ${id}`,
     searching: 'Buscando tus cuentas publicitarias de Meta…',
@@ -322,7 +292,7 @@ function withPartsPaused(campaigns, campaignId, ids) {
 // Guardias y tope de la demo: se simulan en el navegador.
 function demoProtection(prev, body) {
   const guards = { ...prev.guards };
-  if (body.action === 'guard-on') guards[body.key] = { active: true, amount: body.amount, profit: body.profit, ruleIds: [] };
+  if (body.action === 'guard-on') guards[body.key] = { active: true, amount: body.amount, ruleIds: [] };
   if (body.action === 'guard-off') guards[body.key] = { active: false, ruleIds: [] };
   if (body.action === 'cap-set') return { ...prev, guards, spendCap: body.amount };
   if (body.action === 'cap-reset') return { ...prev, guards, amountSpent: 0 };
@@ -333,18 +303,10 @@ function demoProtection(prev, body) {
 function DemoView() {
   const [campaigns, setCampaigns] = useState(DEMO_CAMPAIGNS);
   const [protection, setProtection] = useState(DEMO_CONTEXT.protection);
-  const [profit, setDemoProfit] = useProfit('demo');
-  const profitTimer = useRef(null);
-  // Se escribe de a un dígito: se registra cuando deja de escribir.
-  const setProfit = (value) => {
-    setDemoProfit(value);
-    clearTimeout(profitTimer.current);
-    profitTimer.current = setTimeout(() => trackDemo('profit_set'), 1500);
-  };
   useEffect(() => trackDemo('view', demoViewData()), []);
   const evaluation = useMemo(
-    () => evaluateMetaAccount(campaigns, { currency: DEMO_ACCOUNT.currency, context: DEMO_CONTEXT, profitPerSale: profit }),
-    [campaigns, profit]
+    () => evaluateMetaAccount(campaigns, { currency: DEMO_ACCOUNT.currency, context: DEMO_CONTEXT }),
+    [campaigns]
   );
 
   const actions = useMemo(
@@ -398,8 +360,6 @@ function DemoView() {
         evaluation={evaluation}
         actions={actions}
         platform="meta"
-        profit={profit}
-        onProfitChange={setProfit}
         protection={protection}
         onTrack={trackDemo}
       />
@@ -466,7 +426,7 @@ function LiveView({ source, account, onChangeAccount }) {
   const [error, setError] = useState(null);
   const post = (path, body) =>
     fetchJson(`${source.api}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  const { profit, setProfit, doneTasks, markTaskDone } = useAccountSettings(source, account, post);
+  const { doneTasks, markTaskDone } = useAccountSettings(source, account, post);
   const configCache = useRef(new Map());
 
   const load = useCallback(() => {
@@ -481,8 +441,8 @@ function LiveView({ source, account, onChangeAccount }) {
     load();
   };
 
-  // Se reevalúa en el navegador para que las alertas se actualicen al pausar, activar o cambiar la ganancia por venta.
-  const evaluation = useMemo(() => data && source.evaluate(data, profit), [data, source, profit]);
+  // Se reevalúa en el navegador para que las alertas se actualicen al pausar o activar.
+  const evaluation = useMemo(() => data && source.evaluate(data), [data, source]);
 
   const actions = {
     setStatus: async (campaign, status) => {
@@ -548,8 +508,6 @@ function LiveView({ source, account, onChangeAccount }) {
       onChangeAccount={onChangeAccount}
       platform={source.id}
       hiddenCount={data.hiddenCount}
-      profit={profit}
-      onProfitChange={setProfit}
       doneTasks={doneTasks}
       onTaskDone={markTaskDone}
       protection={data.context?.protection}

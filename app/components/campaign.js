@@ -71,7 +71,6 @@ export function whyLine(c) {
   if (level === 'learning') return learningLine(c);
   if (c.delivering === false) return 'Activa, pero no se está mostrando';
   if (c.learning) return 'Aprendiendo: todavía no hay datos suficientes';
-  if (c.profit) return `Te deja ganancia en cada venta`;
   if (c.health?.headline) return c.health.headline;
   const cost = c.kpis?.[2];
   return cost && cost.value !== '—' ? `${cost.label}: ${cost.value}` : 'Sin alertas';
@@ -560,7 +559,7 @@ function ConfigFold({ campaign: c, money, actions, adsManagerUrl }) {
 }
 
 /** Detalle de una campaña que va bien o que aprende: lo que importa a la vista, el resto plegado. */
-function CalmSections({ campaign: c, money, actions, adsManagerUrl }) {
+function CalmSections({ campaign: c, actions }) {
   const h = c.health;
   const steps = h?.steps;
   return (
@@ -599,7 +598,6 @@ function CalmSections({ campaign: c, money, actions, adsManagerUrl }) {
           </ul>
         </Fold>
       )}
-      {actions.loadConfig && <ConfigFold campaign={c} money={money} actions={actions} adsManagerUrl={adsManagerUrl} />}
     </>
   );
 }
@@ -761,12 +759,6 @@ export function CampaignDetail({ campaign: c, currency, platform, busy, actions,
         </Alert>
       )}
 
-      {!isPaused && c.profit && (
-        <Alert tone="success" title="Esta campaña te deja ganancia">
-          {c.profit.text}
-        </Alert>
-      )}
-
       <div className="bg-surface border border-line rounded-2xl px-4 py-3 shadow-xs">
         <div className="grid grid-cols-3 gap-2">
           {kpis.map((k) => (
@@ -785,7 +777,8 @@ export function CampaignDetail({ campaign: c, currency, platform, busy, actions,
 
       {!isPaused && c.setup && <SetupReview setup={c.setup} />}
       {!isPaused && c.diagnosis && <Diagnosis campaign={c} actions={actions} />}
-      {!isPaused && calm && platform === 'meta' && <CalmSections campaign={c} money={money} actions={actions} adsManagerUrl={adsManagerUrl} />}
+      {!isPaused && calm && platform === 'meta' && <CalmSections campaign={c} actions={actions} />}
+      {platform === 'meta' && actions.loadConfig && <ConfigFold campaign={c} money={money} actions={actions} adsManagerUrl={adsManagerUrl} />}
     </div>
   );
 }

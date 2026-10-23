@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { roundAmount } from '@/lib/guards-meta';
-import { ChevronDown, Coins, ShieldCheck, Wallet } from 'lucide-react';
+import { ChevronDown, ShieldCheck, Wallet } from 'lucide-react';
 import { Alert, Button } from './ui';
 
 const digits = (s) => Number(String(s).replace(/\D/g, '')) || 0;
@@ -101,10 +101,10 @@ function suggestedAmount(campaigns, totalCost) {
 }
 
 /**
- * Protección: cuánto gana el usuario por venta (idea 9), guardias (idea 1) y tope de gasto (idea 2).
+ * Protección: guardias (idea 1) y tope de gasto (idea 2).
  * `onProtection(body)` hace el cambio en Meta y devuelve el estado nuevo; `confirm(opts)` pide confirmación.
  */
-export function ProtectionTab({ evaluation, money, profit, onProfitChange, protection, onProtection, confirm, notify }) {
+export function ProtectionTab({ evaluation, money, protection, onProtection, confirm, notify }) {
   const { summary, campaigns } = evaluation;
   const guards = protection?.guards;
   const activeAmount = guards?.noResults?.amount ?? guards?.adNoResults?.amount;
@@ -135,14 +135,13 @@ export function ProtectionTab({ evaluation, money, profit, onProfitChange, prote
       confirmText: `Meta va a pausar sola cualquier campaña que gaste más de ${money(amount)} en 7 días sin conseguir ningún resultado.`,
       stale: guards?.noResults?.active && guards.noResults.amount !== amount,
     },
+    // Ya no se ofrece (la ganancia por venta cambia mucho según el producto): sólo se muestra
+    // a quien la tenga activa en Meta, para que pueda apagarla.
     {
       key: 'loss',
       title: 'Pausar la campaña de ventas',
-      text: profit ? `Si cada venta te cuesta en anuncios más de lo que ganas (${money(profit)}).` : 'Primero dinos cuánto ganas por venta, arriba.',
-      values: { profit },
-      ready: profit > 0,
-      confirmText: `Meta va a pausar sola las campañas de ventas en las que cada venta cueste más de ${money(profit)} en los últimos 7 días, cuando ya hayan gastado más de ${money(3 * profit)}.`,
-      stale: guards?.loss?.active && profit > 0 && guards.loss.profit !== profit,
+      text: `Si cada venta cuesta en anuncios más de ${money(guards?.loss?.profit)}. Ya no la ofrecemos: te recomendamos desactivarla.`,
+      ready: false,
     },
     {
       key: 'adNoResults',
@@ -253,21 +252,6 @@ export function ProtectionTab({ evaluation, money, profit, onProfitChange, prote
         <p className="text-sm text-muted mt-0.5">Se configura una vez. Después AdSmart y Meta cuidan tu cuenta.</p>
       </div>
 
-      <Card
-        icon={Coins}
-        tone="bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300"
-        title="¿Cuánto ganas por cada venta?"
-        text="Lo que te queda después de pagar el producto, no el precio. Con esto te decimos si cada campaña de ventas te hace ganar o perder plata."
-      >
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <MoneyInput id="profit" label="Ganancia por venta" value={profit} onChange={onProfitChange} />
-          <span className="text-sm text-muted">por venta</span>
-        </div>
-        <p className="text-xs text-muted leading-relaxed">
-          Ejemplo: vendes una torta a $25.000 y hacerla te cuesta $16.000: ganas $9.000. Se guarda sólo en este navegador.
-        </p>
-      </Card>
-
       <section className="bg-surface border border-line rounded-2xl shadow-xs overflow-hidden">
         <div className="p-4 grid grid-cols-[36px_1fr] gap-3 items-start">
           <span className="size-9 grid place-items-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
@@ -300,28 +284,11 @@ export function ProtectionTab({ evaluation, money, profit, onProfitChange, prote
               {guardList(GUARD_ROWS.filter((r) => r.key !== 'loss'))}
               <p className="text-xs text-muted leading-relaxed">El monto se mide en cada campaña o anuncio por separado. Puedes activar las dos.</p>
             </GuardGroup>
-            <GuardGroup
-              title="Ventas que te hacen perder"
-              summary={profit ? `Cada venta cuesta más de ${money(profit)}` : 'Necesita tu ganancia por venta'}
-              on={guards.loss?.active ? 1 : 0}
-              total={1}
-            >
-              {guardList(GUARD_ROWS.filter((r) => r.key === 'loss'))}
-              <p className="text-xs text-muted leading-relaxed">
-                {profit > 0 && `Espera a que la campaña gaste más de ${money(3 * profit)} en la semana (3 ventas) para no pausar por una venta cara aislada. `}
-                <button
-                  type="button"
-                  onClick={() => {
-                    const input = document.getElementById('profit');
-                    input?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    input?.focus({ preventScroll: true });
-                  }}
-                  className="font-semibold text-indigo-600 dark:text-indigo-300 hover:underline cursor-pointer rounded focus-visible:outline-2 focus-visible:outline-indigo-500"
-                >
-                  {profit ? 'Cambiar ganancia' : 'Escribir mi ganancia por venta'}
-                </button>
-              </p>
-            </GuardGroup>
+            {guards.loss?.active && (
+              <GuardGroup title="Ventas que te hacen perder" summary={`Cada venta cuesta más de ${money(guards.loss.profit)}`} on={1} total={1}>
+                {guardList(GUARD_ROWS.filter((r) => r.key === 'loss'))}
+              </GuardGroup>
+            )}
             <details className="group border-t border-line bg-surface-2">
               <summary className="list-none [&::-webkit-details-marker]:hidden cursor-pointer grid grid-cols-[1fr_16px] gap-2.5 items-center px-4 py-3 text-[13px] text-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-indigo-500">
                 ¿Cómo funcionan?

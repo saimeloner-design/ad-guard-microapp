@@ -145,7 +145,7 @@ No se evalúa (se marca "Aprendiendo") si algún conjunto que publica está en f
 | M6 | Anuncios rechazados | Anuncios rechazados o con problemas en una campaña activa (siempre, aunque esté aprendiendo) | Revisar |
 | M7 | Clics que no llegan a la web | Ventas, contactos o tráfico; ≥ 100 clics y visitas a la página / clics < 50% (sólo si el píxel mide visitas) | Revisar |
 | M8 | Casi nadie hace clic | Ventas, contactos, tráfico o app; ≥ 3.000 impresiones y CTR del enlace < 0,4% | Revisar |
-| M9 | Pierde plata en cada venta | Ventas medidas, ≥ 3 compras (`minProfitPurchases`) y costo por compra > lo que el usuario dijo que gana por venta (Protección, §4e). Si no lo supera, el detalle muestra cuánto le queda por venta | **Pausar** |
+| M9 | Pierde plata en cada venta (dormida, §4e) | Ventas medidas, ≥ 3 compras (`minProfitPurchases`) y costo por compra > lo que el usuario dijo que gana por venta (Protección, §4e). Si no lo supera, el detalle muestra cuánto le queda por venta | **Pausar** |
 
 Alertas de cuenta:
 - **A1 Sin medición**: las campañas de ventas y contactos gastaron y no registran ningún resultado (probable falta de píxel). En ese caso M1, M2 y M3 no se evalúan para ellas.
@@ -236,7 +236,7 @@ Las dos primeras desaparecen al hacerlas. Las de revisar se marcan con "Ya lo hi
 Una campaña nueva con problemas va al grupo "Para revisar" y genera una tarea en Hoy. La calibración registra `setupProblems`.
 
 ### Cuánto ganas por venta
-Se pregunta en Protección y se guarda sólo en el navegador, por cuenta (`adsguard.gananciaPorVenta.{plataforma}.{cuenta}`); si cambia de dispositivo hay que volver a escribirlo. Con ese dato las alertas se reevalúan en el navegador y aparece M9 (§4b). Hoy invita a responderlo si hay campañas de ventas activas.
+**Quitado (2026-10-23).** Ya no se pregunta: la ganancia por venta cambia mucho según el negocio y los productos que promociona, así que no sirve para una decisión simple. Queda pendiente pensar otra funcionalidad más adelante. M9 (§4b) y la guardia "Pierde plata" quedan dormidas: el panel no pasa `profitPerSale` a la evaluación. La tabla `account_settings` y `/api/meta-ads/settings` siguen como estaban.
 
 ### Palabras explicadas
 Las etiquetas de las cifras de cada campaña (gasto, compras, costo por…) se pueden tocar y abren una hoja con una explicación de una línea (`app/components/glossary.js`).
@@ -256,12 +256,12 @@ Botón en cada ganadora de "Lo que funciona" y en "Lo que te funcionó antes": c
 | Guardia | Nivel | Condición (últimos 7 días) |
 |---|---|---|
 | Sin resultados | Campaña | gasto > monto elegido y 0 resultados |
-| Pierde plata | Campaña de ventas | gasto > 3× la ganancia por venta y costo por compra (`cost_per_purchase_fb`) > ganancia por venta |
+| Pierde plata (ya no se ofrece) | Campaña de ventas | gasto > 3× la ganancia por venta y costo por compra (`cost_per_purchase_fb`) > ganancia por venta |
 | Anuncio sin resultados | Anuncio | gasto > monto elegido y 0 resultados |
 
 En Protección se muestran agrupadas por el problema que evitan, en una sola tarjeta con todo plegado (maqueta "AdSmart Guardias", variante C, https://claude.ai/artifact/3phB1tGJV92cgx9QXU5e4G, privada, aprobada el 2026-10-22). Cada grupo muestra a la vista su resumen y una etiqueta de estado ("1 de 2 activa", "Apagada"):
 - **Gasta sin traer resultados**: el monto y dos interruptores, "Pausar la campaña completa" (cuando nada de la campaña funciona) y "Pausar solo el anuncio que falla" (cuando otros anuncios sí traen resultados). Se complementan: como la de campaña mide el gasto total, salta primero cuando nada funciona; la de anuncio sirve cuando la campaña sí trae resultados. El monto se mide en cada campaña o anuncio por separado.
-- **Ventas que te hacen perder**: un interruptor, con la espera de 3 ventas explicada y un acceso a la ganancia por venta.
+- **Ventas que te hacen perder**: ya no se ofrece. Sólo aparece si la cuenta la tiene activa en Meta, con el interruptor para apagarla.
 - **¿Cómo funcionan?**: se crea una regla en Meta, Meta la revisa cada 30 minutos mirando 7 días, pausa y avisa en Facebook; si el usuario reactiva lo pausado y sigue igual, se pausa otra vez.
 
 El monto sugerido es el doble del costo por resultado típico de la cuenta (o 3 días de gasto) redondeado. Activar pide confirmación; desactivar borra la regla. Cambiar el monto con una guardia activa la vuelve a crear. Las reglas se leen junto con las campañas; si no se pueden leer, Protección lo avisa y el resto del panel funciona igual.
@@ -282,15 +282,15 @@ Campañas queda en Pausar ya / Para revisar / **Van bien** / **Aprendiendo** / P
 Sólo campañas evaluadas por completo, sin alertas ni problemas de configuración nueva:
 - **Línea en la lista** (`health.headline`): "25 compras a $5.000 · tu mejor de ventas" (o "· más barato que tus otras" si cuesta ≤ 90% de la referencia).
 - **Recuadro verde plegado** "Va bien: pasó las N revisiones" con un resumen; al abrirlo, cada revisión con su cifra (consigue resultados, precio contra la referencia, CTR, visitas/clics, frecuencia de 7 días, valor/gasto), sólo las que se pueden calcular, y el consejo "Déjala como está".
-- **Plegados**: el recorrido de la gente en verde, "Tu mejor campaña de {objetivo}" (si es la ganadora de §4d, con "Crear una campaña igual") y la configuración.
+- **Plegados**: el recorrido de la gente en verde y "Tu mejor campaña de {objetivo}" (si es la ganadora de §4d, con "Crear una campaña igual").
 
 ### Aprendiendo
 - **Meta aprende** (`learningStatus` = LEARNING): "N de ~50 {resultados}" con barra. Sale de `learning_stage_info.conversions` del conjunto más atrasado, en la misma consulta de conjuntos que ya se hacía. Meta suele necesitar unos 50 resultados en la semana desde el último cambio grande (`last_sig_edit_ts`); si al ritmo actual no llega, se avisa que puede quedar con aprendizaje limitado (M5). Se agrega "No la cambies por ahora" con la fecha del último cambio grande.
 - **Faltan datos** (< 1.000 impresiones y < 30 clics): dos barras ("620 de 1.000 veces vista" o "8 de 30 clics") y en cuántos días llega al ritmo de su vida (máx. 30 días).
-- Las cifras se marcan como provisorias. Plegados: "Cuando termine / tenga datos, revisamos" (las reglas que le aplicarán según el objetivo) y la configuración.
+- Las cifras se marcan como provisorias. Plegado: "Cuando termine / tenga datos, revisamos" (las reglas que le aplicarán según el objetivo).
 
 ### Configuración de esta campaña
-Plegada. Presupuesto diario, qué busca Meta (optimización del conjunto), ubicación, edad, formato, fechas y el **texto** de los anuncios que publican, con los resultados de cada uno (del desglose de §4c). No se piden imágenes ni videos. Enlace al Administrador de anuncios.
+Plegada, al final del detalle de **todas** las campañas de Meta (con alertas, sanas, aprendiendo o pausadas). Presupuesto diario, qué busca Meta (optimización del conjunto), ubicación, edad, formato, fechas y el **texto** de los anuncios que publican, con los resultados de cada uno (del desglose de §4c). No se piden imágenes ni videos. Enlace al Administrador de anuncios.
 
 **Cuidado con las consultas a Meta:** la configuración no se pide al cargar el panel sino al abrir la sección (`GET /api/meta-ads/campaigns/{id}/config?currency=`, una consulta), y el navegador la guarda mientras la página esté abierta. Si la campaña ya venía con su configuración (§4d: comparadas, ganadoras y nuevas) no se pide de nuevo.
 
@@ -340,10 +340,10 @@ Diseño aprobado el 2026-10-20 (maqueta "AdsGuard Nueva estructura"). Cuatro pes
 
 | Pestaña | Pregunta | Qué tiene |
 |---|---|---|
-| **Hoy** | ¿Qué hago ahora? | Gasto de 30 días, cuántas campañas hay para pausar, para revisar y que van bien, cuánto se ahorra pausando, alertas de cuenta, **una sola tarea** (§4e) y accesos a la próxima fecha, a la ganancia por venta y a Protección |
+| **Hoy** | ¿Qué hago ahora? | Gasto de 30 días, cuántas campañas hay para pausar, para revisar y que van bien, cuánto se ahorra pausando, alertas de cuenta, **una sola tarea** (§4e) y accesos a la próxima fecha y a Protección |
 | **Campañas** | ¿Cuál anda mal? | Lista agrupada en Pausar ya / Para revisar / Van bien / Aprendiendo / Pausadas (§4f), una línea por campaña con lo gastado y por qué está en ese grupo. Al tocar una se abre el detalle: alertas (las de Revisar plegadas bajo la de Pausar), cifras con palabras explicadas, revisión de campaña nueva y diagnóstico (§4c, §4d) |
 | **Lo que funciona** | ¿Qué repito? | Próximas fechas y mejores campañas con "Crear una campaña igual" |
-| **Protección** | ¿Estoy cubierto? | Ganancia por venta, guardias y tope de gasto |
+| **Protección** | ¿Estoy cubierto? | Guardias y tope de gasto |
 
 Reglas: una tarea a la vez; el detalle sólo al tocar; el botón donde está el problema; lo que se configura una vez queda aparte. El detalle de campaña usa `#campana-{id}` en la URL para que el gesto de "atrás" del celular vuelva a la lista. El número rojo sobre "Campañas" son las campañas para pausar. Con Google (hoy oculto) sólo hay Hoy y Campañas.
 
