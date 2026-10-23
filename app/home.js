@@ -162,7 +162,7 @@ function BetaNote({ className = '' }) {
   return (
     <p className={`text-xs text-muted leading-relaxed text-pretty ${className}`}>
       AdSmart está en beta cerrada: solo pueden entrar las cuentas invitadas. Si Facebook te dice que la app no está disponible,{' '}
-      <a href="/beta" className="font-medium text-fg underline underline-offset-4 decoration-line-strong">
+      <a href="/beta#revision" className="font-medium text-fg underline underline-offset-4 decoration-line-strong">
         pide tu acceso aquí
       </a>
       .
