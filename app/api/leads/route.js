@@ -1,5 +1,5 @@
 import { flushLogsAfterResponse, log, reportError, requiredEnv } from '@/lib/log';
-import { normalizeFacebookProfile, SPEND_OPTIONS, TRACKING_PARAMS } from '@/lib/leads';
+import { normalizeFacebookProfile, PLATFORM_OPTIONS, SPEND_OPTIONS, TRACKING_PARAMS } from '@/lib/leads';
 
 const FLOW = 'leads';
 
@@ -25,15 +25,16 @@ export async function POST(request) {
 
   const contact = clean(body.contact, 120);
   const spend = clean(body.spend, 60);
-  if (!contact || !SPEND_OPTIONS.includes(spend)) {
-    return fail(400, 'Escribe tu email o WhatsApp y elige cuánto inviertes para que podamos contactarte.');
+  const platform = clean(body.platform, 60);
+  if (!contact || !SPEND_OPTIONS.includes(spend) || !PLATFORM_OPTIONS.includes(platform)) {
+    return fail(400, 'Escribe tu email o WhatsApp y elige desde dónde promocionas y cuánto inviertes para que podamos contactarte.');
   }
   // Durante la beta Meta solo deja entrar a testers, y se invitan por perfil de Facebook, no por email.
   const facebook = normalizeFacebookProfile(clean(body.facebook, 200));
   if (!facebook) return fail(400, 'Pega el enlace de tu perfil de Facebook: lo necesitamos para darte acceso a la beta.');
 
   const tracking = Object.fromEntries(TRACKING_PARAMS.map((key) => [key, clean(body.tracking?.[key], 200)]));
-  const lead = { createdAt: new Date().toISOString(), name: clean(body.name, 80), contact, spend, facebook, ...tracking };
+  const lead = { createdAt: new Date().toISOString(), name: clean(body.name, 80), contact, spend, platform, facebook, ...tracking };
 
   const url = requiredEnv('LEADS_SHEET_WEBHOOK_URL', FLOW);
   const secret = requiredEnv('LEADS_SHEET_SECRET', FLOW);
@@ -55,6 +56,6 @@ export async function POST(request) {
     return fail(502, 'No pudimos guardar tus datos. Intenta de nuevo en unos minutos.');
   }
 
-  log('info', FLOW, 'Lead guardado', { spend, utmSource: tracking.utm_source, utmContent: tracking.utm_content });
+  log('info', FLOW, 'Lead guardado', { spend, platform, utmSource: tracking.utm_source, utmContent: tracking.utm_content });
   return Response.json({ ok: true });
 }

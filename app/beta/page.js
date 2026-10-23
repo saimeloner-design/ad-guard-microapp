@@ -86,6 +86,22 @@ const FAQ = [
   ['¿Necesito saber de marketing?', 'No. Te explicamos todo en palabras simples y te decimos qué conviene hacer con cada campaña.'],
   ['¿Sirve si solo "promociono" publicaciones?', 'Sí. Las publicaciones promocionadas también son campañas de Meta y las revisamos igual.'],
   [
+    '¿Y si solo promociono desde Instagram?',
+    <div key="ig" id="solo-instagram">
+      <p>
+        Funciona igual, pero necesitas una cuenta de Facebook para conectarte, aunque no la uses para publicar: Meta solo
+        deja ver los anuncios, también los de Instagram, entrando con Facebook.
+      </p>
+      <ol>
+        <li>Si no tienes, crea una cuenta en facebook.com.</li>
+        <li>En Instagram: tu perfil → menú ☰ → Centro de cuentas → Cuentas → Agregar cuentas, y entra con tu Facebook.</li>
+        <li>Con esa cuenta, regístrate gratis en developers.facebook.com. Meta lo pide mientras dure la beta.</li>
+        <li>Pega el enlace de ese perfil de Facebook en el formulario de abajo.</li>
+      </ol>
+      <p>Si ya promocionaste sin tener Facebook, cuéntanos cuando te escribamos y lo revisamos contigo.</p>
+    </div>,
+  ],
+  [
     '¿Funciona con Google Ads o TikTok?',
     'Por ahora solo con Meta: Instagram y Facebook. Si te interesa otra plataforma, cuéntanos cuando te escribamos.',
   ],
@@ -262,7 +278,7 @@ export default function BetaLanding() {
               {FAQ.map(([q, a]) => (
                 <details key={q}>
                   <summary>{q}</summary>
-                  <p>{a}</p>
+                  {typeof a === 'string' ? <p>{a}</p> : a}
                 </details>
               ))}
             </div>

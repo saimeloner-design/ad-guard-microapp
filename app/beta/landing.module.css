@@ -514,6 +514,15 @@
   color: var(--fg-2);
   max-width: 40em;
 }
+.faq details ol {
+  margin: 0;
+  padding: 0 0 18px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--fg-2);
+  max-width: 40em;
+}
 
 /* Formulario */
 .signup {

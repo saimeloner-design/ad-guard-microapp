@@ -2,12 +2,15 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, Check, LoaderCircle } from 'lucide-react';
-import { normalizeFacebookProfile, SPEND_OPTIONS, TRACKING_PARAMS } from '@/lib/leads';
+import { normalizeFacebookProfile, PLATFORM_OPTIONS, SPEND_OPTIONS, TRACKING_PARAMS } from '@/lib/leads';
 import { trackLead } from './meta-pixel';
 import styles from './landing.module.css';
 
-const INVALID = 'Escribe tu email o WhatsApp y elige cuánto inviertes para que podamos contactarte.';
+const INVALID = 'Escribe tu email o WhatsApp y elige desde dónde promocionas y cuánto inviertes para que podamos contactarte.';
 const NO_FACEBOOK = 'Pega el enlace de tu perfil de Facebook: lo necesitamos para darte acceso a la beta.';
+
+// La respuesta vive dentro de un <details> cerrado; no todos los navegadores lo abren al saltar al ancla.
+const openInstagramFaq = () => document.getElementById('solo-instagram')?.closest('details')?.setAttribute('open', '');
 
 export function LeadForm() {
   const [state, setState] = useState('idle'); // idle | sending | done
@@ -18,8 +21,9 @@ export function LeadForm() {
     const form = new FormData(e.currentTarget);
     const contact = String(form.get('contact') || '').trim();
     const spend = String(form.get('spend') || '');
+    const platform = String(form.get('platform') || '');
     const facebook = String(form.get('facebook') || '').trim();
-    if (!contact || !spend) return setError(INVALID);
+    if (!contact || !spend || !platform) return setError(INVALID);
     if (!normalizeFacebookProfile(facebook)) return setError(NO_FACEBOOK);
 
     setError(null);
@@ -34,6 +38,7 @@ export function LeadForm() {
           contact,
           facebook,
           spend,
+          platform,
           website: form.get('website'),
           tracking: Object.fromEntries(TRACKING_PARAMS.map((key) => [key, params.get(key) || ''])),
         }),
@@ -113,8 +118,17 @@ export function LeadForm() {
         />
         <span id="f-facebook-hint" className={styles.hint}>
           Mientras dure la beta, Meta solo deja entrar a quienes invitamos por su perfil. En la app de Facebook: tu perfil → ··· →
-          Copiar enlace.
+          Copiar enlace. ¿Solo usas Instagram? <a href="#solo-instagram" onClick={openInstagramFaq}>Mira cómo conectarte</a>.
         </span>
+      </label>
+      <label htmlFor="f-platform">
+        ¿Desde dónde promocionas tus publicaciones?
+        <select id="f-platform" name="platform" required defaultValue="">
+          <option value="">Elige una opción</option>
+          {PLATFORM_OPTIONS.map((o) => (
+            <option key={o}>{o}</option>
+          ))}
+        </select>
       </label>
       <label htmlFor="f-spend">
         ¿Cuánto inviertes al mes en anuncios? (en pesos chilenos)
