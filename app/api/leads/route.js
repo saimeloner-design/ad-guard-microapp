@@ -1,5 +1,5 @@
 import { flushLogsAfterResponse, log, reportError, requiredEnv } from '@/lib/log';
-import { SPEND_OPTIONS, TRACKING_PARAMS } from '@/lib/leads';
+import { normalizeFacebookProfile, SPEND_OPTIONS, TRACKING_PARAMS } from '@/lib/leads';
 
 const FLOW = 'leads';
 
@@ -28,9 +28,12 @@ export async function POST(request) {
   if (!contact || !SPEND_OPTIONS.includes(spend)) {
     return fail(400, 'Escribe tu email o WhatsApp y elige cuánto inviertes para que podamos contactarte.');
   }
+  // Durante la beta Meta solo deja entrar a testers, y se invitan por perfil de Facebook, no por email.
+  const facebook = normalizeFacebookProfile(clean(body.facebook, 200));
+  if (!facebook) return fail(400, 'Pega el enlace de tu perfil de Facebook: lo necesitamos para darte acceso a la beta.');
 
   const tracking = Object.fromEntries(TRACKING_PARAMS.map((key) => [key, clean(body.tracking?.[key], 200)]));
-  const lead = { createdAt: new Date().toISOString(), name: clean(body.name, 80), contact, spend, ...tracking };
+  const lead = { createdAt: new Date().toISOString(), name: clean(body.name, 80), contact, spend, facebook, ...tracking };
 
   const url = requiredEnv('LEADS_SHEET_WEBHOOK_URL', FLOW);
   const secret = requiredEnv('LEADS_SHEET_SECRET', FLOW);

@@ -75,7 +75,7 @@ export default function PrivacyPage() {
         </p>
         <p>
           <strong className="text-fg">En el formulario de la beta.</strong> Si te inscribes en la página de la beta, guardamos el nombre,
-          el correo o teléfono y el rango de inversión que escribas, además de los datos del anuncio por el que llegaste. En esa página
+          el correo o teléfono, el enlace a tu perfil de Facebook (para invitarte como tester de la app) y el rango de inversión que escribas, además de los datos del anuncio por el que llegaste. En esa página
           usamos el Pixel de Meta para medir los resultados de nuestra campaña.
         </p>
         <p>

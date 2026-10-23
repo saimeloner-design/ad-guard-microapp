@@ -156,6 +156,20 @@ const PROVIDERS = [
   { id: 'facebook', label: 'Continuar con Meta', Logo: MetaLogo },
 ];
 
+// Mientras la app de Meta esté en modo desarrollo solo entran los testers invitados. Al resto Facebook
+// le muestra "App no disponible" y casi nunca lo devuelve aquí, así que el aviso va junto al botón.
+function BetaNote({ className = '' }) {
+  return (
+    <p className={`text-xs text-muted leading-relaxed text-pretty ${className}`}>
+      AdSmart está en beta cerrada: solo pueden entrar las cuentas invitadas. Si Facebook te dice que la app no está disponible,{' '}
+      <a href="/beta" className="font-medium text-fg underline underline-offset-4 decoration-line-strong">
+        pide tu acceso aquí
+      </a>
+      .
+    </p>
+  );
+}
+
 const CANCELLED = 'La conexión no se completó. Si cancelaste o desmarcaste algún permiso, vuelve a intentarlo y acéptalos todos.';
 
 // Códigos con los que next-auth vuelve a la página (pages.error en lib/auth.js).
@@ -262,6 +276,7 @@ function Landing({ onDemo, notice }) {
 
       <div className="mt-8 max-w-md mx-auto">
         <LoginButtons />
+        <BetaNote className="mt-3" />
         <button
           onClick={onDemo}
           className="mt-4 text-sm font-medium text-muted hover:text-fg underline underline-offset-4 decoration-line-strong cursor-pointer"
@@ -615,6 +630,7 @@ function LoginError({ code, onDismiss }) {
   return (
     <Alert tone="danger" title="No pudimos conectar tu cuenta" onDismiss={onDismiss} className="mb-8 text-left">
       {LOGIN_ERRORS[code] || 'Algo falló al iniciar sesión. Intenta de nuevo.'}
+      <BetaNote className="mt-2" />
     </Alert>
   );
 }

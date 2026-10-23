@@ -25,6 +25,8 @@ const COLUMNS = [
   ['utm_content', 'utm_content'],
   ['utm_term', 'utm_term'],
   ['fbclid', 'fbclid'],
+  // Al final para no descuadrar las filas que ya existen. En una hoja ya creada, escribe el título a mano.
+  ['facebook', 'Perfil de Facebook'],
 ];
 
 function doPost(e) {

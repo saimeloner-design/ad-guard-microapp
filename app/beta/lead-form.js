@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, Check, LoaderCircle } from 'lucide-react';
-import { SPEND_OPTIONS, TRACKING_PARAMS } from '@/lib/leads';
+import { normalizeFacebookProfile, SPEND_OPTIONS, TRACKING_PARAMS } from '@/lib/leads';
 import { trackLead } from './meta-pixel';
 import styles from './landing.module.css';
 
 const INVALID = 'Escribe tu email o WhatsApp y elige cuánto inviertes para que podamos contactarte.';
+const NO_FACEBOOK = 'Pega el enlace de tu perfil de Facebook: lo necesitamos para darte acceso a la beta.';
 
 export function LeadForm() {
   const [state, setState] = useState('idle'); // idle | sending | done
@@ -17,7 +18,9 @@ export function LeadForm() {
     const form = new FormData(e.currentTarget);
     const contact = String(form.get('contact') || '').trim();
     const spend = String(form.get('spend') || '');
+    const facebook = String(form.get('facebook') || '').trim();
     if (!contact || !spend) return setError(INVALID);
+    if (!normalizeFacebookProfile(facebook)) return setError(NO_FACEBOOK);
 
     setError(null);
     setState('sending');
@@ -29,6 +32,7 @@ export function LeadForm() {
         body: JSON.stringify({
           name: form.get('name'),
           contact,
+          facebook,
           spend,
           website: form.get('website'),
           tracking: Object.fromEntries(TRACKING_PARAMS.map((key) => [key, params.get(key) || ''])),
@@ -51,7 +55,7 @@ export function LeadForm() {
           <Check aria-hidden="true" />
         </span>
         <h3>¡Listo, ya estás en la lista!</h3>
-        <p>Te escribiremos en las próximas 24 horas con tu acceso a AdSmart.</p>
+        <p>Te escribiremos en las próximas 24 horas con tu acceso a AdSmart. Te llegará una invitación de Meta que tendrás que aceptar.</p>
       </div>
     );
   }
@@ -73,6 +77,24 @@ export function LeadForm() {
           maxLength={120}
           required
         />
+      </label>
+      <label htmlFor="f-facebook">
+        Enlace a tu perfil de Facebook
+        <input
+          id="f-facebook"
+          name="facebook"
+          type="text"
+          inputMode="url"
+          autoComplete="url"
+          placeholder="facebook.com/camila.rojas"
+          maxLength={200}
+          required
+          aria-describedby="f-facebook-hint"
+        />
+        <span id="f-facebook-hint" className={styles.hint}>
+          Mientras dure la beta, Meta solo deja entrar a quienes invitamos por su perfil. En la app de Facebook: tu perfil → ··· →
+          Copiar enlace.
+        </span>
       </label>
       <label htmlFor="f-spend">
         ¿Cuánto inviertes al mes en anuncios? (en pesos chilenos)
