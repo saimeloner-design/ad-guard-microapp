@@ -130,8 +130,8 @@ const FAQ = [
         <li>Cuando te escribamos para avisarte que ya te invitamos, entra desde un computador con esa misma cuenta.</li>
         <li>
           Abre{' '}
-          <a href="https://developers.facebook.com/requests/" target="_blank" rel="noopener noreferrer">
-            developers.facebook.com/requests
+          <a href="https://developers.facebook.com/settings/developer/requests/" target="_blank" rel="noopener noreferrer">
+            developers.facebook.com/settings/developer/requests
           </a>{' '}
           y acepta la invitación de AdSmart.
         </li>

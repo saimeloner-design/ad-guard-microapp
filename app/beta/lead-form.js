@@ -75,8 +75,8 @@ export function LeadForm() {
           <li>Toca «Empezar» y completa el registro. Es gratis; te pedirá verificar tu teléfono.</li>
           <li>
             Cuando te avisemos, acepta la invitación de AdSmart en{' '}
-            <a href="https://developers.facebook.com/requests/" target="_blank" rel="noopener noreferrer">
-              developers.facebook.com/requests
+            <a href="https://developers.facebook.com/settings/developer/requests/" target="_blank" rel="noopener noreferrer">
+              developers.facebook.com/settings/developer/requests
             </a>
             . Meta no siempre envía notificación.
           </li>
