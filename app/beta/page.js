@@ -102,6 +102,30 @@ const FAQ = [
     </div>,
   ],
   [
+    '¿Cómo acepto la invitación a la beta?',
+    <div key="invitacion">
+      <p>Meta no siempre avisa con una notificación o un correo, así que conviene hacerlo a mano:</p>
+      <ol>
+        <li>
+          Antes de que te invitemos, regístrate gratis en{' '}
+          <a href="https://developers.facebook.com" target="_blank" rel="noopener noreferrer">
+            developers.facebook.com
+          </a>{' '}
+          con tu cuenta de Facebook: toca «Empezar» y verifica tu teléfono.
+        </li>
+        <li>Cuando te escribamos para avisarte que ya te invitamos, entra desde un computador con esa misma cuenta.</li>
+        <li>
+          Abre{' '}
+          <a href="https://developers.facebook.com/requests/" target="_blank" rel="noopener noreferrer">
+            developers.facebook.com/requests
+          </a>{' '}
+          y acepta la invitación de AdSmart.
+        </li>
+        <li>Vuelve a AdSmart y entra con Facebook.</li>
+      </ol>
+    </div>,
+  ],
+  [
     '¿Funciona con Google Ads o TikTok?',
     'Por ahora solo con Meta: Instagram y Facebook. Si te interesa otra plataforma, cuéntanos cuando te escribamos.',
   ],
