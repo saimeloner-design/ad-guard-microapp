@@ -55,7 +55,27 @@ export function LeadForm() {
           <Check aria-hidden="true" />
         </span>
         <h3>¡Listo, ya estás en la lista!</h3>
-        <p>Te escribiremos en las próximas 24 horas con tu acceso a AdSmart. Te llegará una invitación de Meta que tendrás que aceptar.</p>
+        <p>
+          Te escribiremos en las próximas 24 horas con tu acceso a AdSmart. Mientras tanto, deja hecho este paso: sin él, Meta no
+          nos deja invitarte.
+        </p>
+        <ol className={styles.thanksSteps}>
+          <li>
+            Entra en{' '}
+            <a href="https://developers.facebook.com" target="_blank" rel="noopener noreferrer">
+              developers.facebook.com
+            </a>{' '}
+            desde un computador, con tu cuenta de Facebook.
+          </li>
+          <li>Toca «Empezar» y completa el registro. Es gratis; te pedirá verificar tu teléfono.</li>
+          <li>
+            Cuando te avisemos, acepta la invitación de AdSmart en{' '}
+            <a href="https://developers.facebook.com/requests/" target="_blank" rel="noopener noreferrer">
+              developers.facebook.com/requests
+            </a>
+            . Meta no siempre envía notificación.
+          </li>
+        </ol>
       </div>
     );
   }

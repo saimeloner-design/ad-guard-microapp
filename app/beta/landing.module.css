@@ -620,6 +620,19 @@
 .thanks p {
   color: var(--fg-2);
 }
+.thanksSteps {
+  margin: 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--fg-2);
+}
+.thanksSteps a {
+  color: var(--accent);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
 
 .footer {
   padding-block: 28px 100px;
