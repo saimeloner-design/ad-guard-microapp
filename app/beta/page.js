@@ -102,6 +102,20 @@ const FAQ = [
     </div>,
   ],
   [
+    '¿Y si solo uso la página de mi negocio en Facebook?',
+    <div key="pagina">
+      <p>
+        Necesitamos el enlace de tu perfil personal, no el de la página: Meta no deja invitar páginas a la beta. Aunque no lo
+        uses, ya tienes uno, porque toda página la administra al menos un perfil personal.
+      </p>
+      <ol>
+        <li>En la app de Facebook, toca tu foto y elige «Cambiar de perfil» para pasar de la página a tu perfil personal.</li>
+        <li>Si no sabes cuál es, en tu página entra a Configuración → Acceso a la página: ahí aparecen las personas que la administran.</li>
+        <li>Copia el enlace de ese perfil y pégalo en el formulario. No tienes que publicar nada en él.</li>
+      </ol>
+    </div>,
+  ],
+  [
     '¿Cómo acepto la invitación a la beta?',
     <div key="invitacion">
       <p>Meta no siempre avisa con una notificación o un correo, así que conviene hacerlo a mano:</p>
